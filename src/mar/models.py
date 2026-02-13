@@ -64,6 +64,7 @@ class DebateConfig(BaseModel):
     mode: DebateMode = DebateMode.ROUND_ROBIN
     max_rounds: int = 3
     judge_provider: str | None = None
+    synthesis_provider: str | None = None
     verbosity: Verbosity = Verbosity.QUIET
     max_tokens: int = 8192
     temperature: float | None = None

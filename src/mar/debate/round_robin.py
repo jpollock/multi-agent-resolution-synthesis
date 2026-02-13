@@ -280,8 +280,23 @@ class RoundRobinStrategy(DebateStrategy):
     async def _synthesize(
         self, latest: dict[str, LLMResponse]
     ) -> tuple[str, str]:
-        # Pick the first available provider for synthesis
-        synth_provider = next(iter(self.providers.values()))
+        # Select synthesis provider: explicit config > auto-prefer > first
+        synth_name = self.config.synthesis_provider
+        if synth_name:
+            if synth_name not in self.providers:
+                raise ValueError(
+                    f"Synthesis provider '{synth_name}' not in selected providers. "
+                    f"Available: {', '.join(self.providers)}"
+                )
+            synth_provider = self.providers[synth_name]
+        else:
+            synth_provider = None
+            for preferred in ("anthropic", "openai"):
+                if preferred in self.providers:
+                    synth_provider = self.providers[preferred]
+                    break
+            if synth_provider is None:
+                synth_provider = next(iter(self.providers.values()))
         synth_model = self.config.model_overrides.get(synth_provider.name)
 
         parts = [self._full_prompt_with_context()]

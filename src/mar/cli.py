@@ -53,6 +53,7 @@ def main() -> None:
 )
 @click.option("-r", "--rounds", type=int, default=3, help="Max debate rounds.")
 @click.option("-j", "--judge-provider", help="Provider to act as judge (judge mode).")
+@click.option("-s", "--synthesis-provider", help="Provider for final synthesis (default: auto).")
 @click.option(
     "--model",
     multiple=True,
@@ -71,6 +72,7 @@ def debate(
     mode: str,
     rounds: int,
     judge_provider: str | None,
+    synthesis_provider: str | None,
     model: tuple[str, ...],
     max_tokens: int,
     temperature: float | None,
@@ -124,6 +126,7 @@ def debate(
         max_tokens=max_tokens,
         temperature=temperature,
         judge_provider=judge_provider,
+        synthesis_provider=synthesis_provider,
         verbosity=Verbosity.VERBOSE if verbose else Verbosity.QUIET,
         output_dir=output_dir,
     )
