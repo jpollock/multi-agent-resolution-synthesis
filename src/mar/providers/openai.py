@@ -29,12 +29,16 @@ class OpenAIProvider:
         return self._last_usage
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> tuple[str, TokenUsage]:
+        kwargs: dict = {}
+        if temperature is not None:
+            kwargs["temperature"] = temperature
         resp = await self._client.chat.completions.create(
             model=model or self.default_model,
             messages=[{"role": m.role, "content": m.content} for m in messages],
             max_completion_tokens=max_tokens,
+            **kwargs,
         )
         usage = TokenUsage()
         if resp.usage:
@@ -46,14 +50,18 @@ class OpenAIProvider:
         return resp.choices[0].message.content or "", usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> AsyncIterator[str]:
+        kwargs: dict = {}
+        if temperature is not None:
+            kwargs["temperature"] = temperature
         resp = await self._client.chat.completions.create(
             model=model or self.default_model,
             messages=[{"role": m.role, "content": m.content} for m in messages],
             max_completion_tokens=max_tokens,
             stream=True,
             stream_options={"include_usage": True},
+            **kwargs,
         )
         self._last_usage = TokenUsage()
         async for chunk in resp:

@@ -66,6 +66,7 @@ class DebateConfig(BaseModel):
     judge_provider: str | None = None
     verbosity: Verbosity = Verbosity.QUIET
     max_tokens: int = 8192
+    temperature: float | None = None
     output_dir: str = "./mar-output"
 
 

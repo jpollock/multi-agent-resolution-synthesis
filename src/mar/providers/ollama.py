@@ -30,8 +30,11 @@ class OllamaProvider:
         return self._last_usage
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> tuple[str, TokenUsage]:
+        options: dict = {"num_predict": max_tokens}
+        if temperature is not None:
+            options["temperature"] = temperature
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
                 f"{self._base_url}/api/chat",
@@ -41,7 +44,7 @@ class OllamaProvider:
                         {"role": m.role, "content": m.content} for m in messages
                     ],
                     "stream": False,
-                    "options": {"num_predict": max_tokens},
+                    "options": options,
                 },
             )
             resp.raise_for_status()
@@ -54,8 +57,11 @@ class OllamaProvider:
             return data["message"]["content"], usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> AsyncIterator[str]:
+        options: dict = {"num_predict": max_tokens}
+        if temperature is not None:
+            options["temperature"] = temperature
         self._last_usage = TokenUsage()
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
@@ -67,7 +73,7 @@ class OllamaProvider:
                         {"role": m.role, "content": m.content} for m in messages
                     ],
                     "stream": True,
-                    "options": {"num_predict": max_tokens},
+                    "options": options,
                 },
             ) as resp:
                 resp.raise_for_status()

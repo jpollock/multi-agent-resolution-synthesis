@@ -256,17 +256,18 @@ class RoundRobinStrategy(DebateStrategy):
         usage = TokenUsage()
 
         max_tokens = self.config.max_tokens
+        temperature = self.config.temperature
 
         if self.config.verbosity == Verbosity.VERBOSE:
             self.renderer.start_provider_stream(provider.name)
             content = ""
-            async for chunk in provider.stream(messages, model=model, max_tokens=max_tokens):
+            async for chunk in provider.stream(messages, model=model, max_tokens=max_tokens, temperature=temperature):
                 self.renderer.stream_chunk(chunk)
                 content += chunk
             self.renderer.end_provider_stream()
             usage = provider.last_usage
         else:
-            content, usage = await provider.generate(messages, model=model, max_tokens=max_tokens)
+            content, usage = await provider.generate(messages, model=model, max_tokens=max_tokens, temperature=temperature)
             self.renderer.show_response(provider.name, content)
 
         return LLMResponse(

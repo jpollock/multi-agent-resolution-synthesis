@@ -19,9 +19,9 @@ class LLMProvider(Protocol):
     def last_usage(self) -> TokenUsage: ...
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> tuple[str, TokenUsage]: ...
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> AsyncIterator[str]: ...

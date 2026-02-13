@@ -43,12 +43,14 @@ class GoogleProvider:
         return system, contents
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> tuple[str, TokenUsage]:
         system, contents = self._build_contents(messages)
         cfg_kwargs: dict = {"max_output_tokens": max_tokens}
         if system:
             cfg_kwargs["system_instruction"] = system
+        if temperature is not None:
+            cfg_kwargs["temperature"] = temperature
         config = GenerateContentConfig(**cfg_kwargs)
         resp = await self._client.aio.models.generate_content(
             model=model or self.default_model,
@@ -65,12 +67,14 @@ class GoogleProvider:
         return resp.text or "", usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> AsyncIterator[str]:
         system, contents = self._build_contents(messages)
         cfg_kwargs: dict = {"max_output_tokens": max_tokens}
         if system:
             cfg_kwargs["system_instruction"] = system
+        if temperature is not None:
+            cfg_kwargs["temperature"] = temperature
         config = GenerateContentConfig(**cfg_kwargs)
         self._last_usage = TokenUsage()
         response = await self._client.aio.models.generate_content_stream(

@@ -43,14 +43,18 @@ class AnthropicProvider:
         return system, msgs
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> tuple[str, TokenUsage]:
         system, msgs = self._split_system(messages)
+        kwargs: dict = {}
+        if temperature is not None:
+            kwargs["temperature"] = temperature
         resp = await self._client.messages.create(
             model=model or self.default_model,
             max_tokens=max_tokens,
             system=system,
             messages=msgs,
+            **kwargs,
         )
         usage = TokenUsage(
             input_tokens=resp.usage.input_tokens,
@@ -60,15 +64,19 @@ class AnthropicProvider:
         return resp.content[0].text, usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
     ) -> AsyncIterator[str]:
         system, msgs = self._split_system(messages)
         self._last_usage = TokenUsage()
+        kwargs: dict = {}
+        if temperature is not None:
+            kwargs["temperature"] = temperature
         async with self._client.messages.stream(
             model=model or self.default_model,
             max_tokens=max_tokens,
             system=system,
             messages=msgs,
+            **kwargs,
         ) as stream:
             async for text in stream.text_stream:
                 yield text

@@ -59,6 +59,7 @@ def main() -> None:
     help="Provider:model override (e.g. openai:gpt-4o-mini). Repeatable.",
 )
 @click.option("--max-tokens", type=int, default=8192, help="Max output tokens per LLM call.")
+@click.option("-t", "--temperature", type=float, default=None, help="Temperature (0.0-2.0). Default: provider default.")
 @click.option("-v", "--verbose", is_flag=True, help="Stream responses in real-time.")
 @click.option(
     "-o", "--output-dir", default="./mar-output", help="Output directory."
@@ -72,6 +73,7 @@ def debate(
     judge_provider: str | None,
     model: tuple[str, ...],
     max_tokens: int,
+    temperature: float | None,
     verbose: bool,
     output_dir: str,
 ) -> None:
@@ -106,6 +108,7 @@ def debate(
         mode=DebateMode(mode),
         max_rounds=rounds,
         max_tokens=max_tokens,
+        temperature=temperature,
         judge_provider=judge_provider,
         verbosity=Verbosity.VERBOSE if verbose else Verbosity.QUIET,
         output_dir=output_dir,
