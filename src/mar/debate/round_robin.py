@@ -277,28 +277,24 @@ class RoundRobinStrategy(DebateStrategy):
             provider=provider.name, model=actual_model, content=content, usage=usage
         )
 
+    def _synthesis_provider_order(self) -> list[str]:
+        """Return providers in preferred order for synthesis."""
+        synth_name = self.config.synthesis_provider
+        if synth_name and synth_name in self.providers:
+            return [synth_name] + [n for n in self.providers if n != synth_name]
+
+        ordered: list[str] = []
+        for preferred in ("anthropic", "openai"):
+            if preferred in self.providers:
+                ordered.append(preferred)
+        for name in self.providers:
+            if name not in ordered:
+                ordered.append(name)
+        return ordered
+
     async def _synthesize(
         self, latest: dict[str, LLMResponse]
     ) -> tuple[str, str]:
-        # Select synthesis provider: explicit config > auto-prefer > first
-        synth_name = self.config.synthesis_provider
-        if synth_name:
-            if synth_name not in self.providers:
-                raise ValueError(
-                    f"Synthesis provider '{synth_name}' not in selected providers. "
-                    f"Available: {', '.join(self.providers)}"
-                )
-            synth_provider = self.providers[synth_name]
-        else:
-            synth_provider = None
-            for preferred in ("anthropic", "openai"):
-                if preferred in self.providers:
-                    synth_provider = self.providers[preferred]
-                    break
-            if synth_provider is None:
-                synth_provider = next(iter(self.providers.values()))
-        synth_model = self.config.model_overrides.get(synth_provider.name)
-
         parts = [self._full_prompt_with_context()]
         parts.append("\n---\n\nFinal answers from each model after debate:\n")
         for name, resp in latest.items():
@@ -334,20 +330,34 @@ class RoundRobinStrategy(DebateStrategy):
             messages.append(system_msg)
         messages.append(Message(role="user", content="\n".join(parts)))
 
-        self.renderer.start_round(0)  # Synthesis round
-        resp = await self._get_response(synth_provider, messages, synth_model)
+        # Try providers in order, falling back on failure
+        ordered = self._synthesis_provider_order()
+        last_error: Exception | None = None
 
-        # Split into resolution + final answer
-        content = resp.content
-        if "## Final Answer" in content:
-            parts_split = content.split("## Final Answer", 1)
-            resolution = parts_split[0].strip()
-            final = parts_split[1].strip()
-        else:
-            resolution = ""
-            final = content
+        for name in ordered:
+            provider = self.providers[name]
+            model = self.config.model_overrides.get(name)
+            try:
+                self.renderer.start_round(0)
+                resp = await self._get_response(provider, messages, model)
 
-        return final, resolution
+                content = resp.content
+                if "## Final Answer" in content:
+                    parts_split = content.split("## Final Answer", 1)
+                    resolution = parts_split[0].strip()
+                    final = parts_split[1].strip()
+                else:
+                    resolution = ""
+                    final = content
+
+                return final, resolution
+            except Exception as e:
+                last_error = e
+                self.renderer.show_error(name, f"Synthesis failed: {e}")
+
+        raise RuntimeError(
+            f"All providers failed during synthesis. Last error: {last_error}"
+        )
 
     @staticmethod
     def _has_converged(
