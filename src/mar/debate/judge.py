@@ -52,7 +52,9 @@ class JudgeStrategy(DebateStrategy):
         judge_provider = self.providers[judge_name]
         judge_model = self.config.model_overrides.get(judge_name)
 
+        self.renderer.start_work([judge_name], "Judging")
         judgment = await self._judge(judge_provider, judge_model, responses)
+        self.renderer.stop_work()
 
         # Parse judgment into resolution + final answer
         content = judgment.content
@@ -93,6 +95,7 @@ class JudgeStrategy(DebateStrategy):
                 except Exception as e:
                     self.renderer.show_error(name, str(e))
         else:
+            self.renderer.start_work(list(self.providers.keys()), "Round 1")
             tasks = []
             provider_names = []
             for name, provider in self.providers.items():
@@ -101,6 +104,7 @@ class JudgeStrategy(DebateStrategy):
                 tasks.append(self._get_response(provider, messages, model))
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
+            self.renderer.stop_work()
             for name, r in zip(provider_names, results):
                 if isinstance(r, Exception):
                     self.renderer.show_error(name, str(r))

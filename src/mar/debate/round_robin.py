@@ -94,16 +94,18 @@ class RoundRobinStrategy(DebateStrategy):
         messages = [system_msg, user_msg] if system_msg else [user_msg]
 
         return await self._gather_responses(
-            list(self.providers.items()), messages
+            list(self.providers.items()), messages, phase="Round 1"
         )
 
     async def _gather_responses(
         self,
         providers: list[tuple[str, LLMProvider]],
         messages: list[Message],
+        phase: str = "Generating",
     ) -> list[LLMResponse]:
         """Run providers concurrently in quiet mode, sequentially in verbose."""
         responses: list[LLMResponse] = []
+        names = [n for n, _ in providers]
 
         if self.config.verbosity == Verbosity.VERBOSE:
             # Sequential to avoid interleaved streaming output
@@ -116,6 +118,7 @@ class RoundRobinStrategy(DebateStrategy):
                     self.renderer.show_error(name, str(e))
         else:
             # Concurrent when not streaming
+            self.renderer.start_work(names, phase)
             tasks = []
             provider_names = []
             for name, provider in providers:
@@ -124,6 +127,7 @@ class RoundRobinStrategy(DebateStrategy):
                 tasks.append(self._get_response(provider, messages, model))
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
+            self.renderer.stop_work()
             for name, r in zip(provider_names, results):
                 if isinstance(r, Exception):
                     self.renderer.show_error(name, str(r))
@@ -164,6 +168,8 @@ class RoundRobinStrategy(DebateStrategy):
                 except Exception as e:
                     self.renderer.show_error(name, str(e))
         else:
+            critique_names = [name for name, _, _ in critique_items]
+            self.renderer.start_work(critique_names, f"Round {round_num} critiques")
             tasks = []
             provider_names = []
             for name, provider, msgs in critique_items:
@@ -172,6 +178,7 @@ class RoundRobinStrategy(DebateStrategy):
                 tasks.append(self._get_response(provider, msgs, model))
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
+            self.renderer.stop_work()
             for name, r in zip(provider_names, results):
                 if isinstance(r, Exception):
                     self.renderer.show_error(name, str(r))
@@ -339,7 +346,9 @@ class RoundRobinStrategy(DebateStrategy):
             model = self.config.model_overrides.get(name)
             try:
                 self.renderer.start_round(0)
+                self.renderer.start_work([name], "Synthesizing")
                 resp = await self._get_response(provider, messages, model)
+                self.renderer.stop_work()
 
                 content = resp.content
                 if "## Final Answer" in content:
@@ -352,6 +361,7 @@ class RoundRobinStrategy(DebateStrategy):
 
                 return final, resolution
             except Exception as e:
+                self.renderer.stop_work()
                 last_error = e
                 self.renderer.show_error(name, f"Synthesis failed: {e}")
 

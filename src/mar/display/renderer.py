@@ -5,6 +5,7 @@ from __future__ import annotations
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.status import Status
 from rich.table import Table
 
 from mar.models import AttributionReport, CostReport, DebateResult, Verbosity
@@ -15,6 +16,7 @@ class Renderer:
         self.console = Console()
         self.verbose = verbosity == Verbosity.VERBOSE
         self._current_text = ""
+        self._status: Status | None = None
 
     def start_debate(self, prompt: str, providers: list[str], mode: str) -> None:
         table = Table(title="Debate Configuration", show_header=False)
@@ -42,6 +44,19 @@ class Renderer:
     def end_provider_stream(self) -> None:
         if self.verbose:
             self.console.print()
+
+    def start_work(self, providers: list[str], phase: str = "Generating") -> None:
+        """Show a spinner in quiet mode."""
+        if not self.verbose:
+            label = f"[bold blue]{phase}[/bold blue]: {', '.join(providers)}"
+            self._status = self.console.status(label, spinner="dots")
+            self._status.start()
+
+    def stop_work(self) -> None:
+        """Stop the spinner."""
+        if self._status:
+            self._status.stop()
+            self._status = None
 
     def show_response(self, provider: str, content: str) -> None:
         if not self.verbose:
