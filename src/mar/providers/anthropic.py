@@ -43,12 +43,12 @@ class AnthropicProvider:
         return system, msgs
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
     ) -> tuple[str, TokenUsage]:
         system, msgs = self._split_system(messages)
         resp = await self._client.messages.create(
             model=model or self.default_model,
-            max_tokens=4096,
+            max_tokens=max_tokens,
             system=system,
             messages=msgs,
         )
@@ -60,13 +60,13 @@ class AnthropicProvider:
         return resp.content[0].text, usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
     ) -> AsyncIterator[str]:
         system, msgs = self._split_system(messages)
         self._last_usage = TokenUsage()
         async with self._client.messages.stream(
             model=model or self.default_model,
-            max_tokens=4096,
+            max_tokens=max_tokens,
             system=system,
             messages=msgs,
         ) as stream:

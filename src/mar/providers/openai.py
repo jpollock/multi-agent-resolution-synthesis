@@ -29,11 +29,12 @@ class OpenAIProvider:
         return self._last_usage
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
     ) -> tuple[str, TokenUsage]:
         resp = await self._client.chat.completions.create(
             model=model or self.default_model,
             messages=[{"role": m.role, "content": m.content} for m in messages],
+            max_completion_tokens=max_tokens,
         )
         usage = TokenUsage()
         if resp.usage:
@@ -45,11 +46,12 @@ class OpenAIProvider:
         return resp.choices[0].message.content or "", usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
     ) -> AsyncIterator[str]:
         resp = await self._client.chat.completions.create(
             model=model or self.default_model,
             messages=[{"role": m.role, "content": m.content} for m in messages],
+            max_completion_tokens=max_tokens,
             stream=True,
             stream_options={"include_usage": True},
         )

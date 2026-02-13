@@ -43,10 +43,13 @@ class GoogleProvider:
         return system, contents
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
     ) -> tuple[str, TokenUsage]:
         system, contents = self._build_contents(messages)
-        config = GenerateContentConfig(system_instruction=system) if system else None
+        cfg_kwargs: dict = {"max_output_tokens": max_tokens}
+        if system:
+            cfg_kwargs["system_instruction"] = system
+        config = GenerateContentConfig(**cfg_kwargs)
         resp = await self._client.aio.models.generate_content(
             model=model or self.default_model,
             contents=contents,
@@ -62,10 +65,13 @@ class GoogleProvider:
         return resp.text or "", usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
     ) -> AsyncIterator[str]:
         system, contents = self._build_contents(messages)
-        config = GenerateContentConfig(system_instruction=system) if system else None
+        cfg_kwargs: dict = {"max_output_tokens": max_tokens}
+        if system:
+            cfg_kwargs["system_instruction"] = system
+        config = GenerateContentConfig(**cfg_kwargs)
         self._last_usage = TokenUsage()
         response = await self._client.aio.models.generate_content_stream(
             model=model or self.default_model,

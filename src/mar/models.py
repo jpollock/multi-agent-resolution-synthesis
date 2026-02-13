@@ -65,6 +65,7 @@ class DebateConfig(BaseModel):
     max_rounds: int = 3
     judge_provider: str | None = None
     verbosity: Verbosity = Verbosity.QUIET
+    max_tokens: int = 8192
     output_dir: str = "./mar-output"
 
 

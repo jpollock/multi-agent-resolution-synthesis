@@ -58,6 +58,7 @@ def main() -> None:
     multiple=True,
     help="Provider:model override (e.g. openai:gpt-4o-mini). Repeatable.",
 )
+@click.option("--max-tokens", type=int, default=8192, help="Max output tokens per LLM call.")
 @click.option("-v", "--verbose", is_flag=True, help="Stream responses in real-time.")
 @click.option(
     "-o", "--output-dir", default="./mar-output", help="Output directory."
@@ -70,6 +71,7 @@ def debate(
     rounds: int,
     judge_provider: str | None,
     model: tuple[str, ...],
+    max_tokens: int,
     verbose: bool,
     output_dir: str,
 ) -> None:
@@ -103,6 +105,7 @@ def debate(
         model_overrides=model_overrides,
         mode=DebateMode(mode),
         max_rounds=rounds,
+        max_tokens=max_tokens,
         judge_provider=judge_provider,
         verbosity=Verbosity.VERBOSE if verbose else Verbosity.QUIET,
         output_dir=output_dir,

@@ -30,7 +30,7 @@ class OllamaProvider:
         return self._last_usage
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
     ) -> tuple[str, TokenUsage]:
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
@@ -41,6 +41,7 @@ class OllamaProvider:
                         {"role": m.role, "content": m.content} for m in messages
                     ],
                     "stream": False,
+                    "options": {"num_predict": max_tokens},
                 },
             )
             resp.raise_for_status()
@@ -53,7 +54,7 @@ class OllamaProvider:
             return data["message"]["content"], usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None
+        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192
     ) -> AsyncIterator[str]:
         self._last_usage = TokenUsage()
         async with httpx.AsyncClient(timeout=120.0) as client:
@@ -66,6 +67,7 @@ class OllamaProvider:
                         {"role": m.role, "content": m.content} for m in messages
                     ],
                     "stream": True,
+                    "options": {"num_predict": max_tokens},
                 },
             ) as resp:
                 resp.raise_for_status()
