@@ -14,6 +14,7 @@ from mar.models import (
     TokenUsage,
     Verbosity,
 )
+from mar.providers.base import retry_with_backoff
 
 if TYPE_CHECKING:
     from mar.providers.base import LLMProvider
@@ -198,7 +199,9 @@ class JudgeStrategy(DebateStrategy):
             self.renderer.end_provider_stream()
             usage = provider.last_usage
         else:
-            content, usage = await provider.generate(messages, model=model, max_tokens=max_tokens, temperature=temperature)
+            content, usage = await retry_with_backoff(
+                provider.generate, messages, model=model, max_tokens=max_tokens, temperature=temperature
+            )
             self.renderer.show_response(provider.name, content)
 
         return LLMResponse(

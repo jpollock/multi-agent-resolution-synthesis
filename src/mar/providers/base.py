@@ -1,10 +1,54 @@
-"""LLM provider protocol."""
+"""LLM provider protocol and retry utilities."""
 
 from __future__ import annotations
 
-from typing import AsyncIterator, Protocol, runtime_checkable
+import asyncio
+import logging
+from typing import Any, AsyncIterator, Awaitable, Callable, Protocol, runtime_checkable
 
 from mar.models import Message, TokenUsage
+
+logger = logging.getLogger(__name__)
+
+_RETRYABLE_NAMES = (
+    "timeout", "ratelimit", "rate_limit", "connection",
+    "internalserver", "server_error", "503", "529",
+)
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Check if an exception is transient and worth retrying."""
+    name = type(exc).__name__.lower()
+    msg = str(exc).lower()
+    return any(r in name or r in msg for r in _RETRYABLE_NAMES)
+
+
+async def retry_with_backoff(
+    fn: Callable[..., Awaitable[Any]],
+    *args: Any,
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    **kwargs: Any,
+) -> Any:
+    """Call an async function with exponential backoff on transient errors."""
+    last_exc: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            return await fn(*args, **kwargs)
+        except (TimeoutError, ConnectionError, OSError) as e:
+            last_exc = e
+        except Exception as e:
+            if _is_retryable(e):
+                last_exc = e
+            else:
+                raise
+        if attempt < max_retries:
+            delay = base_delay * (2 ** attempt)
+            logger.warning(
+                "Retry %d/%d after %.1fs: %s", attempt + 1, max_retries, delay, last_exc
+            )
+            await asyncio.sleep(delay)
+    raise last_exc  # type: ignore[misc]
 
 
 @runtime_checkable
