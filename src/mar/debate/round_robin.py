@@ -59,7 +59,7 @@ class RoundRobinStrategy(DebateStrategy):
                 if self._has_converged(prev, new_answers):
                     reason = (
                         f"Answers converged after round {round_num} "
-                        f"(similarity threshold 0.9 reached)."
+                        f"(similarity threshold {self.config.convergence_threshold} reached)."
                     )
                     result.convergence_reason = reason
                     self.renderer.show_convergence(reason)
@@ -369,17 +369,17 @@ class RoundRobinStrategy(DebateStrategy):
             f"All providers failed during synthesis. Last error: {last_error}"
         )
 
-    @staticmethod
     def _has_converged(
-        prev: dict[str, LLMResponse], curr: dict[str, LLMResponse]
+        self, prev: dict[str, LLMResponse], curr: dict[str, LLMResponse]
     ) -> bool:
         common = set(prev) & set(curr)
         if not common:
             return False
+        threshold = self.config.convergence_threshold
         for name in common:
             ratio = difflib.SequenceMatcher(
                 None, prev[name].content, curr[name].content
             ).ratio()
-            if ratio < 0.9:
+            if ratio < threshold:
                 return False
         return True

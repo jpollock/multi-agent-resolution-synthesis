@@ -59,6 +59,7 @@ def main() -> None:
     multiple=True,
     help="Provider:model override (e.g. openai:gpt-4o-mini). Repeatable.",
 )
+@click.option("--threshold", type=float, default=0.85, help="Convergence similarity threshold (0.0-1.0).")
 @click.option("--max-tokens", type=int, default=8192, help="Max output tokens per LLM call.")
 @click.option("-t", "--temperature", type=float, default=None, help="Temperature (0.0-2.0). Default: provider default.")
 @click.option("-v", "--verbose", is_flag=True, help="Stream responses in real-time.")
@@ -74,6 +75,7 @@ def debate(
     judge_provider: str | None,
     synthesis_provider: str | None,
     model: tuple[str, ...],
+    threshold: float,
     max_tokens: int,
     temperature: float | None,
     verbose: bool,
@@ -127,6 +129,7 @@ def debate(
         temperature=temperature,
         judge_provider=judge_provider,
         synthesis_provider=synthesis_provider,
+        convergence_threshold=threshold,
         verbosity=Verbosity.VERBOSE if verbose else Verbosity.QUIET,
         output_dir=output_dir,
     )

@@ -65,6 +65,7 @@ class DebateConfig(BaseModel):
     max_rounds: int = 3
     judge_provider: str | None = None
     synthesis_provider: str | None = None
+    convergence_threshold: float = 0.85
     verbosity: Verbosity = Verbosity.QUIET
     max_tokens: int = 8192
     temperature: float | None = None
