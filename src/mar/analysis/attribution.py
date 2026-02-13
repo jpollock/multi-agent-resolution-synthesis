@@ -6,7 +6,7 @@ import difflib
 import re
 from dataclasses import dataclass, field
 
-from mar.models import AttributionReport, DebateResult, ProviderAttribution
+from mar.models import AttributionReport, DebateResult, ProviderAttribution, RoundDiff
 
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|\n+")
 _MIN_SENTENCE_LEN = 20
@@ -83,12 +83,15 @@ class AttributionAnalyzer:
         novel = max(0, len(final_sentences) - total_attributed)
         novel_pct = (novel / len(final_sentences) * 100) if final_sentences else 0.0
 
+        round_diffs = self._compute_round_diffs(provider_data)
+
         return AttributionReport(
             providers=attributions,
             similarity_threshold=self.threshold,
             sentence_count_final=len(final_sentences),
             novel_sentences=novel,
             novel_pct=round(novel_pct, 1),
+            round_diffs=round_diffs,
         )
 
     def _extract_provider_data(
@@ -198,3 +201,40 @@ class AttributionAnalyzer:
 
         overall = sum(per_target.values()) / len(per_target) if per_target else 0.0
         return overall, per_target
+
+    def _compute_round_diffs(
+        self, provider_data: dict[str, _ProviderText]
+    ) -> list[RoundDiff]:
+        diffs: list[RoundDiff] = []
+        for name, data in provider_data.items():
+            rounds_sorted = sorted(data.round_sentences.keys())
+            for i in range(len(rounds_sorted) - 1):
+                r1 = rounds_sorted[i]
+                r2 = rounds_sorted[i + 1]
+                s1 = data.round_sentences[r1]
+                s2 = data.round_sentences[r2]
+
+                matched_s2: set[int] = set()
+                unchanged = 0
+                for sent in s1:
+                    idx, score = _best_match(sent, s2)
+                    if score >= self.threshold:
+                        unchanged += 1
+                        matched_s2.add(idx)
+
+                removed = len(s1) - unchanged
+                added = len(s2) - len(matched_s2)
+                similarity = difflib.SequenceMatcher(
+                    None, "\n".join(s1), "\n".join(s2)
+                ).ratio()
+
+                diffs.append(RoundDiff(
+                    provider=name,
+                    from_round=r1,
+                    to_round=r2,
+                    similarity=round(similarity, 3),
+                    sentences_added=added,
+                    sentences_removed=removed,
+                    sentences_unchanged=unchanged,
+                ))
+        return diffs

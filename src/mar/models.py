@@ -88,12 +88,23 @@ class ProviderAttribution(BaseModel):
     influence_details: dict[str, float] = Field(default_factory=dict)
 
 
+class RoundDiff(BaseModel):
+    provider: str
+    from_round: int
+    to_round: int
+    similarity: float = 0.0
+    sentences_added: int = 0
+    sentences_removed: int = 0
+    sentences_unchanged: int = 0
+
+
 class AttributionReport(BaseModel):
     providers: list[ProviderAttribution] = Field(default_factory=list)
     similarity_threshold: float = 0.6
     sentence_count_final: int = 0
     novel_sentences: int = 0
     novel_pct: float = 0.0
+    round_diffs: list[RoundDiff] = Field(default_factory=list)
 
 
 class ProviderCost(BaseModel):

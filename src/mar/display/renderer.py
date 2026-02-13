@@ -8,7 +8,7 @@ from rich.panel import Panel
 from rich.status import Status
 from rich.table import Table
 
-from mar.models import AttributionReport, CostReport, DebateResult, Verbosity
+from mar.models import AttributionReport, CostReport, DebateResult, RoundDiff, Verbosity
 
 
 class Renderer:
@@ -144,6 +144,30 @@ class Renderer:
             f"[dim]Total: {report.total_input_tokens + report.total_output_tokens:,} tokens  |  "
             f"${report.total_cost:.4f}[/dim]"
         )
+
+    def show_round_diffs(self, diffs: list[RoundDiff]) -> None:
+        if not diffs:
+            return
+        self.console.print()
+        self.console.rule("[bold cyan]Round-over-Round Changes[/bold cyan]")
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("Provider", style="bold green")
+        table.add_column("Rounds", justify="center")
+        table.add_column("Similarity", justify="right")
+        table.add_column("Added", justify="right", style="green")
+        table.add_column("Removed", justify="right", style="red")
+        table.add_column("Unchanged", justify="right")
+
+        for d in diffs:
+            table.add_row(
+                d.provider,
+                f"{d.from_round} -> {d.to_round}",
+                f"{d.similarity:.1%}",
+                f"+{d.sentences_added}",
+                f"-{d.sentences_removed}",
+                str(d.sentences_unchanged),
+            )
+        self.console.print(table)
 
     def show_output_path(self, path: str) -> None:
         self.console.print(f"\n[dim]Output written to: {path}[/dim]")

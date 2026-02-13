@@ -46,8 +46,10 @@ class DebateEngine:
         costs = compute_costs(result)
 
         renderer.show_attribution(attribution)
+        renderer.show_round_diffs(attribution.round_diffs)
         renderer.show_costs(costs)
         writer.write_attribution(attribution)
+        writer.write_round_diffs(attribution.round_diffs)
         writer.write_costs(costs)
 
         renderer.show_final_answer(result)

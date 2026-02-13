@@ -8,7 +8,7 @@ from pathlib import Path
 
 from slugify import slugify
 
-from mar.models import AttributionReport, CostReport, Critique, LLMResponse
+from mar.models import AttributionReport, CostReport, Critique, LLMResponse, RoundDiff
 
 
 class OutputWriter:
@@ -128,6 +128,20 @@ class OutputWriter:
             f"tokens | ${report.total_cost:.4f}"
         )
         self._write(self._audit / "costs.md", "\n".join(lines))
+
+    def write_round_diffs(self, diffs: list[RoundDiff]) -> None:
+        if not diffs:
+            return
+        lines = ["# Round-over-Round Changes\n"]
+        lines.append("| Provider | Rounds | Similarity | Added | Removed | Unchanged |")
+        lines.append("|----------|--------|-----------|-------|---------|-----------|")
+        for d in diffs:
+            lines.append(
+                f"| {d.provider} | {d.from_round}->{d.to_round} "
+                f"| {d.similarity:.1%} | +{d.sentences_added} "
+                f"| -{d.sentences_removed} | {d.sentences_unchanged} |"
+            )
+        self._write(self._audit / "round-diffs.md", "\n".join(lines))
 
     @staticmethod
     def _write(path: Path, content: str) -> None:
