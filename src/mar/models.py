@@ -92,6 +92,8 @@ class AttributionReport(BaseModel):
     providers: list[ProviderAttribution] = Field(default_factory=list)
     similarity_threshold: float = 0.6
     sentence_count_final: int = 0
+    novel_sentences: int = 0
+    novel_pct: float = 0.0
 
 
 class ProviderCost(BaseModel):

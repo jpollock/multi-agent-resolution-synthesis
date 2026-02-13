@@ -87,6 +87,12 @@ class OutputWriter:
                 f"| {pa.survival_rate:.1f}% ({pa.survived_sentences}/{pa.initial_sentences}) "
                 f"| {pa.influence_score:.1f}% |"
             )
+        if report.novel_sentences > 0:
+            lines.append(
+                f"| *Synthesizer (novel)* | - "
+                f"| {report.novel_pct:.1f}% ({report.novel_sentences}/{report.sentence_count_final}) "
+                f"| - | - |"
+            )
         lines.append("\n## Metric Definitions\n")
         lines.append(
             "- **Contribution**: percentage of final answer sentences whose "

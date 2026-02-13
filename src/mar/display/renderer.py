@@ -103,6 +103,15 @@ class Renderer:
                 f"{pa.influence_score:.1f}%",
             )
 
+        if report.novel_sentences > 0:
+            table.add_row(
+                "[dim]Synthesizer (novel)[/dim]",
+                "[dim]-[/dim]",
+                f"[dim]{report.novel_pct:.1f}% ({report.novel_sentences}/{report.sentence_count_final})[/dim]",
+                "[dim]-[/dim]",
+                "[dim]-[/dim]",
+            )
+
         self.console.print(table)
         self.console.print(
             f"[dim]Similarity threshold: {report.similarity_threshold}  |  "

@@ -79,10 +79,16 @@ class AttributionAnalyzer:
                 )
             )
 
+        total_attributed = sum(a.contributed_sentences for a in attributions)
+        novel = max(0, len(final_sentences) - total_attributed)
+        novel_pct = (novel / len(final_sentences) * 100) if final_sentences else 0.0
+
         return AttributionReport(
             providers=attributions,
             similarity_threshold=self.threshold,
             sentence_count_final=len(final_sentences),
+            novel_sentences=novel,
+            novel_pct=round(novel_pct, 1),
         )
 
     def _extract_provider_data(
