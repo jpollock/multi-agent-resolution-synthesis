@@ -42,7 +42,7 @@ def main() -> None:
     "-p",
     "--provider",
     multiple=True,
-    help=f"Provider to use (repeatable). Available: {', '.join(AVAILABLE_PROVIDERS)}",
+    help=f"Provider or provider:model (e.g. openai:gpt-4.1). Available: {', '.join(AVAILABLE_PROVIDERS)}",
 )
 @click.option(
     "-m",
@@ -84,14 +84,28 @@ def debate(
     resolved_prompt = _resolve_value(prompt)
     resolved_context = [_resolve_value(c) for c in context]
 
-    providers = list(provider) if provider else ["openai", "anthropic"]
+    providers: list[str] = []
+    model_overrides: dict[str, str] = {}
+
+    # Parse -p flags: support both "openai" and "openai:gpt-4.1"
+    for p in provider:
+        if ":" in p:
+            prov, mod = p.split(":", 1)
+            providers.append(prov)
+            model_overrides[prov] = mod
+        else:
+            providers.append(p)
+
+    if not providers:
+        providers = ["openai", "anthropic"]
+
     for p in providers:
         if p not in AVAILABLE_PROVIDERS:
             raise click.BadParameter(
                 f"Unknown provider '{p}'. Available: {', '.join(AVAILABLE_PROVIDERS)}"
             )
 
-    model_overrides: dict[str, str] = {}
+    # Explicit --model overrides take precedence
     for m in model:
         if ":" not in m:
             raise click.BadParameter(
