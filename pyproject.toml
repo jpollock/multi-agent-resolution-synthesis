@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mars-llm"
-version = "0.1.0"
+version = "0.0.1"
 description = "Multi-Agent Resolution Synthesis — LLMs debate to find the best answer"
 readme = "README.md"
 license = "MIT"
