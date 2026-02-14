@@ -6,10 +6,10 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mar.display.renderer import Renderer
-    from mar.models import DebateConfig, DebateResult
-    from mar.output.writer import OutputWriter
-    from mar.providers.base import LLMProvider
+    from mars.display.renderer import Renderer
+    from mars.models import DebateConfig, DebateResult
+    from mars.output.writer import OutputWriter
+    from mars.providers.base import LLMProvider
 
 
 class DebateStrategy(ABC):

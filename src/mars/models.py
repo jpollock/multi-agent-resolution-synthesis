@@ -1,4 +1,4 @@
-"""Pydantic data models for MAR."""
+"""Pydantic data models for MARS."""
 
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ class DebateConfig(BaseModel):
     verbosity: Verbosity = Verbosity.QUIET
     max_tokens: int = 8192
     temperature: float | None = None
-    output_dir: str = "./mar-output"
+    output_dir: str = "./mars-output"
 
 
 # --- Attribution & Cost models ---

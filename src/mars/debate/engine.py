@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from mar.analysis.attribution import AttributionAnalyzer
-from mar.analysis.costs import compute_costs
-from mar.config import AppConfig
-from mar.debate.judge import JudgeStrategy
-from mar.debate.round_robin import RoundRobinStrategy
-from mar.display.renderer import Renderer
-from mar.models import DebateConfig, DebateMode, DebateResult
-from mar.output.writer import OutputWriter
-from mar.providers.registry import get_provider
+from mars.analysis.attribution import AttributionAnalyzer
+from mars.analysis.costs import compute_costs
+from mars.config import AppConfig
+from mars.debate.judge import JudgeStrategy
+from mars.debate.round_robin import RoundRobinStrategy
+from mars.display.renderer import Renderer
+from mars.models import DebateConfig, DebateMode, DebateResult
+from mars.output.writer import OutputWriter
+from mars.providers.registry import get_provider
 
 
 class DebateEngine:

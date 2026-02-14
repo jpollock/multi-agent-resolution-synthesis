@@ -1,4 +1,4 @@
-"""Click CLI for Multi-Agent Resolution."""
+"""Click CLI for MARS — Multi-Agent Resolution Synthesis."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ from pathlib import Path
 import click
 from dotenv import load_dotenv
 
-from mar.config import AppConfig
-from mar.debate.engine import DebateEngine
-from mar.models import DebateConfig, DebateMode, Verbosity
-from mar.providers.registry import AVAILABLE_PROVIDERS
+from mars.config import AppConfig
+from mars.debate.engine import DebateEngine
+from mars.models import DebateConfig, DebateMode, Verbosity
+from mars.providers.registry import AVAILABLE_PROVIDERS
 
 
 def _resolve_value(value: str) -> str:
@@ -26,7 +26,7 @@ def _resolve_value(value: str) -> str:
 
 @click.group()
 def main() -> None:
-    """MAR - Multi-Agent Resolution: LLMs debate to find the best answer."""
+    """MARS — Multi-Agent Resolution Synthesis: LLMs debate to find the best answer."""
     load_dotenv()
 
 
@@ -64,7 +64,7 @@ def main() -> None:
 @click.option("-t", "--temperature", type=float, default=None, help="Temperature (0.0-2.0). Default: provider default.")
 @click.option("-v", "--verbose", is_flag=True, help="Stream responses in real-time.")
 @click.option(
-    "-o", "--output-dir", default="./mar-output", help="Output directory."
+    "-o", "--output-dir", default="./mars-output", help="Output directory."
 )
 def debate(
     prompt: str,

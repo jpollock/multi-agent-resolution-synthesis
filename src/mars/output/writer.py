@@ -8,7 +8,7 @@ from pathlib import Path
 
 from slugify import slugify
 
-from mar.models import AttributionReport, CostReport, Critique, LLMResponse, RoundDiff
+from mars.models import AttributionReport, CostReport, Critique, LLMResponse, RoundDiff
 
 
 class OutputWriter:

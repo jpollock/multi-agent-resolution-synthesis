@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from mar.debate.base import DebateStrategy
-from mar.models import (
+from mars.debate.base import DebateStrategy
+from mars.models import (
     DebateResult,
     DebateRound,
     LLMResponse,
@@ -14,10 +14,10 @@ from mar.models import (
     TokenUsage,
     Verbosity,
 )
-from mar.providers.base import retry_with_backoff
+from mars.providers.base import retry_with_backoff
 
 if TYPE_CHECKING:
-    from mar.providers.base import LLMProvider
+    from mars.providers.base import LLMProvider
 
 
 class JudgeStrategy(DebateStrategy):

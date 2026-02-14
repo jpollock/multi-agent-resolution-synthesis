@@ -8,7 +8,7 @@ from rich.panel import Panel
 from rich.status import Status
 from rich.table import Table
 
-from mar.models import AttributionReport, CostReport, DebateResult, RoundDiff, Verbosity
+from mars.models import AttributionReport, CostReport, DebateResult, RoundDiff, Verbosity
 
 
 class Renderer:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mar.models import CostReport, DebateResult, ProviderCost
+from mars.models import CostReport, DebateResult, ProviderCost
 
 # Pricing per 1M tokens: (input_cost, output_cost)
 # Approximate as of early 2025. Ollama is local/free.

@@ -7,8 +7,8 @@ from typing import AsyncIterator
 
 import httpx
 
-from mar.config import AppConfig
-from mar.models import Message, TokenUsage
+from mars.config import AppConfig
+from mars.models import Message, TokenUsage
 
 
 class OllamaProvider:

@@ -6,7 +6,7 @@ import difflib
 import re
 from dataclasses import dataclass, field
 
-from mar.models import AttributionReport, DebateResult, ProviderAttribution, RoundDiff
+from mars.models import AttributionReport, DebateResult, ProviderAttribution, RoundDiff
 
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|\n+")
 _MIN_SENTENCE_LEN = 20

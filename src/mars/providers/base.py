@@ -6,7 +6,7 @@ import asyncio
 import logging
 from typing import Any, AsyncIterator, Awaitable, Callable, Protocol, runtime_checkable
 
-from mar.models import Message, TokenUsage
+from mars.models import Message, TokenUsage
 
 logger = logging.getLogger(__name__)
 

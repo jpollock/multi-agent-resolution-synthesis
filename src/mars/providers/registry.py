@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from mar.providers.anthropic import AnthropicProvider
-from mar.providers.google import GoogleProvider
-from mar.providers.ollama import OllamaProvider
-from mar.providers.openai import OpenAIProvider
+from mars.providers.anthropic import AnthropicProvider
+from mars.providers.google import GoogleProvider
+from mars.providers.ollama import OllamaProvider
+from mars.providers.openai import OpenAIProvider
 
 if TYPE_CHECKING:
-    from mar.config import AppConfig
-    from mar.providers.base import LLMProvider
+    from mars.config import AppConfig
+    from mars.providers.base import LLMProvider
 
 _PROVIDERS: dict[str, type] = {
     "openai": OpenAIProvider,

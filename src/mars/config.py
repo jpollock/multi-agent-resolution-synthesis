@@ -14,7 +14,7 @@ _DEFAULT_MODELS: dict[str, str] = {
 
 
 class AppConfig(BaseSettings):
-    model_config = {"env_prefix": "MAR_"}
+    model_config = {"env_prefix": "MARS_"}
 
     openai_api_key: str = ""
     anthropic_api_key: str = ""
