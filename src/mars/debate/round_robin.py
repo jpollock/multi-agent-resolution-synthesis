@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import difflib
 from typing import TYPE_CHECKING
 
@@ -13,10 +12,7 @@ from mars.models import (
     DebateRound,
     LLMResponse,
     Message,
-    TokenUsage,
-    Verbosity,
 )
-from mars.providers.base import retry_with_backoff
 
 if TYPE_CHECKING:
     from mars.providers.base import LLMProvider
@@ -32,7 +28,6 @@ class RoundRobinStrategy(DebateStrategy):
 
         self.writer.write_prompt(self.config.prompt, self.config.context)
 
-        # Track latest answers per provider
         latest_answers: dict[str, LLMResponse] = {}
 
         for round_num in range(1, self.config.max_rounds + 1):
@@ -51,7 +46,6 @@ class RoundRobinStrategy(DebateStrategy):
                 debate_round.responses = responses
                 self.writer.write_round(round_num, responses, critiques)
 
-                # Check convergence
                 prev = latest_answers
                 new_answers = {r.provider: r for r in responses}
                 if self._has_converged(prev, new_answers):
@@ -77,7 +71,6 @@ class RoundRobinStrategy(DebateStrategy):
             self.renderer.show_convergence(reason)
             self.writer.write_convergence(reason)
 
-        # Final synthesis
         final, resolution = await self._synthesize(latest_answers)
         result.final_answer = final
         result.resolution_reasoning = resolution
@@ -93,51 +86,11 @@ class RoundRobinStrategy(DebateStrategy):
 
         return await self._gather_responses(list(self.providers.items()), messages, phase="Round 1")
 
-    async def _gather_responses(
-        self,
-        providers: list[tuple[str, LLMProvider]],
-        messages: list[Message],
-        phase: str = "Generating",
-    ) -> list[LLMResponse]:
-        """Run providers concurrently in quiet mode, sequentially in verbose."""
-        responses: list[LLMResponse] = []
-        names = [n for n, _ in providers]
-
-        if self.config.verbosity == Verbosity.VERBOSE:
-            # Sequential to avoid interleaved streaming output
-            for name, provider in providers:
-                model = self.config.model_overrides.get(name)
-                try:
-                    resp = await self._get_response(provider, messages, model)
-                    responses.append(resp)
-                except Exception as e:
-                    self.renderer.show_error(name, str(e))
-        else:
-            # Concurrent when not streaming
-            self.renderer.start_work(names, phase)
-            tasks = []
-            provider_names = []
-            for name, provider in providers:
-                provider_names.append(name)
-                model = self.config.model_overrides.get(name)
-                tasks.append(self._get_response(provider, messages, model))
-
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            self.renderer.stop_work()
-            for name, r in zip(provider_names, results, strict=True):
-                if isinstance(r, Exception):
-                    self.renderer.show_error(name, str(r))
-                    continue
-                responses.append(r)  # type: ignore[arg-type]
-
-        return responses
-
     async def _critique_round(
         self, round_num: int, latest: dict[str, LLMResponse]
     ) -> tuple[list[Critique], list[LLMResponse]]:
         critiques: list[Critique] = []
 
-        # Build per-provider critique prompts
         critique_items: list[tuple[str, LLMProvider, list[Message]]] = []
         for name, provider in self.providers.items():
             if name not in latest:
@@ -150,7 +103,7 @@ class RoundRobinStrategy(DebateStrategy):
 
         responses: list[LLMResponse] = []
 
-        if self.config.verbosity == Verbosity.VERBOSE:
+        if self.config.verbosity.value == "verbose":
             for name, provider, msgs in critique_items:
                 model = self.config.model_overrides.get(name)
                 try:
@@ -158,7 +111,11 @@ class RoundRobinStrategy(DebateStrategy):
                     for other_name in latest:
                         if other_name != name:
                             critiques.append(
-                                Critique(author=name, target=other_name, content=r.content)
+                                Critique(
+                                    author=name,
+                                    target=other_name,
+                                    content=r.content,
+                                )
                             )
                     responses.append(r)
                 except Exception as e:
@@ -166,6 +123,8 @@ class RoundRobinStrategy(DebateStrategy):
         else:
             critique_names = [name for name, _, _ in critique_items]
             self.renderer.start_work(critique_names, f"Round {round_num} critiques")
+            import asyncio
+
             tasks = []
             provider_names = []
             for name, provider, msgs in critique_items:
@@ -182,7 +141,11 @@ class RoundRobinStrategy(DebateStrategy):
                 for other_name in latest:
                     if other_name != name:
                         critiques.append(
-                            Critique(author=name, target=other_name, content=r.content)
+                            Critique(
+                                author=name,
+                                target=other_name,
+                                content=r.content,
+                            )
                         )
                 responses.append(r)
 
@@ -223,66 +186,6 @@ class RoundRobinStrategy(DebateStrategy):
             messages.append(system_msg)
         messages.append(Message(role="user", content="\n".join(parts)))
         return messages
-
-    def _full_prompt_with_context(self) -> str:
-        """Build the complete original prompt including any context."""
-        parts = []
-        if self.config.context:
-            parts.append("=== CONTEXT ===")
-            for i, ctx in enumerate(self.config.context, 1):
-                if len(self.config.context) > 1:
-                    parts.append(f"\n--- Context {i} ---")
-                parts.append(ctx)
-            parts.append("\n=== END CONTEXT ===\n")
-        parts.append(f"ORIGINAL PROMPT: {self.config.prompt}")
-        return "\n".join(parts)
-
-    def _build_system(self) -> Message | None:
-        if not self.config.context:
-            return None
-        ctx = "\n\n---\n\n".join(self.config.context)
-        return Message(
-            role="system",
-            content=(
-                "You are participating in a structured debate. The user's prompt "
-                "includes context that is essential to the task. Treat the context "
-                "as primary source material - reference it directly, address its "
-                "specifics, and ensure your answer covers every requirement stated "
-                "in both the context and prompt.\n\n"
-                f"CONTEXT:\n{ctx}"
-            ),
-        )
-
-    async def _get_response(
-        self, provider: LLMProvider, messages: list[Message], model: str | None
-    ) -> LLMResponse:
-        actual_model = model or provider.default_model
-        usage = TokenUsage()
-
-        max_tokens = self.config.max_tokens
-        temperature = self.config.temperature
-
-        if self.config.verbosity == Verbosity.VERBOSE:
-            self.renderer.start_provider_stream(provider.name)
-            content = ""
-            async for chunk in provider.stream(  # type: ignore[attr-defined]
-                messages, model=model, max_tokens=max_tokens, temperature=temperature
-            ):
-                self.renderer.stream_chunk(chunk)
-                content += chunk
-            self.renderer.end_provider_stream()
-            usage = provider.last_usage
-        else:
-            content, usage = await retry_with_backoff(
-                provider.generate,
-                messages,
-                model=model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-            )
-            self.renderer.show_response(provider.name, content)
-
-        return LLMResponse(provider=provider.name, model=actual_model, content=content, usage=usage)
 
     def _synthesis_provider_order(self) -> list[str]:
         """Return providers in preferred order for synthesis."""
@@ -335,7 +238,6 @@ class RoundRobinStrategy(DebateStrategy):
             messages.append(system_msg)
         messages.append(Message(role="user", content="\n".join(parts)))
 
-        # Try providers in order, falling back on failure
         ordered = self._synthesis_provider_order()
         last_error: Exception | None = None
 
@@ -348,15 +250,7 @@ class RoundRobinStrategy(DebateStrategy):
                 resp = await self._get_response(provider, messages, model)
                 self.renderer.stop_work()
 
-                content = resp.content
-                if "## Final Answer" in content:
-                    parts_split = content.split("## Final Answer", 1)
-                    resolution = parts_split[0].strip()
-                    final = parts_split[1].strip()
-                else:
-                    resolution = ""
-                    final = content
-
+                final, resolution = self._parse_final_answer(resp.content)
                 return final, resolution
             except Exception as e:
                 self.renderer.stop_work()
