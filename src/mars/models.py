@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class DebateMode(str, Enum):
@@ -70,6 +70,27 @@ class DebateConfig(BaseModel):
     max_tokens: int = 8192
     temperature: float | None = None
     output_dir: str = "./mars-output"
+
+    @field_validator("max_rounds")
+    @classmethod
+    def max_rounds_positive(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("max_rounds must be at least 1")
+        return v
+
+    @field_validator("convergence_threshold")
+    @classmethod
+    def threshold_in_range(cls, v: float) -> float:
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("convergence_threshold must be between 0.0 and 1.0")
+        return v
+
+    @field_validator("providers")
+    @classmethod
+    def providers_not_empty(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("At least one provider is required")
+        return v
 
 
 # --- Attribution & Cost models ---
