@@ -11,7 +11,8 @@ src/mars/
 ├── models.py                # All Pydantic data models
 ├── debate/
 │   ├── engine.py            # DebateEngine: top-level orchestrator
-│   ├── base.py              # DebateStrategy ABC
+│   ├── base.py              # DebateStrategy ABC + shared methods
+│   ├── prompts.py           # Prompt templates for debate strategies
 │   ├── round_robin.py       # RoundRobinStrategy: critique loop + synthesis
 │   └── judge.py             # JudgeStrategy: single-judge evaluation
 ├── providers/
@@ -146,3 +147,68 @@ Synthesis provider selection:
 1. `-s provider` flag
 2. Auto: prefer Anthropic, then OpenAI, then others
 3. Falls back through all providers on failure
+
+## Shared Strategy Methods
+
+`DebateStrategy` (debate/base.py) contains shared methods used by both strategies:
+
+- `_full_prompt_with_context()` — builds the user prompt with optional context blocks
+- `_build_system()` — creates a system message from context (or `None` if no context)
+- `_get_response()` — calls a provider with verbose (streaming) or quiet (generate + retry) handling
+- `_gather_responses()` — runs multiple providers concurrently (quiet) or sequentially (verbose)
+- `_parse_final_answer()` — splits response on `## Final Answer` heading into `(final, resolution)`
+
+The `FINAL_ANSWER_HEADING` constant is defined in `debate/base.py`.
+
+## Prompt Templates
+
+`debate/prompts.py` centralises all prompt text used by the debate strategies:
+
+- `SYSTEM_CONTEXT_TEMPLATE` — system message template with `{context}` placeholder
+- `CRITIQUE_INSTRUCTIONS` — instructions for the critique phase (round-robin only)
+- `EVALUATION_RULES` — shared "CRITICAL RULES" block used by both synthesis and judge prompts
+- `SYNTHESIS_PREAMBLE` — synthesis-specific intro (round-robin)
+- `JUDGE_PREAMBLE` — judge-specific intro
+
+## Async Patterns
+
+All LLM calls are async. In **quiet mode**, providers run concurrently via `asyncio.gather(*tasks, return_exceptions=True)`. Failed providers are logged and skipped without aborting the debate. In **verbose mode**, providers run sequentially to avoid interleaved streaming output. The `_gather_responses()` method in the base class encapsulates this pattern.
+
+## Error Handling and Retry
+
+`retry_with_backoff()` in `providers/base.py` wraps async calls with exponential backoff:
+
+- **Max retries**: 3
+- **Delay**: 1s, 2s, 4s (exponential)
+- **Retryable errors**: detected by exception class name and message substring matching against known transient indicators (`timeout`, `rate_limit`, `connection`, `503`, `529`, etc.)
+- **Non-retryable errors**: re-raised immediately
+
+Provider-level errors during debate rounds are caught in `_gather_responses()` and displayed via `renderer.show_error()` without aborting.
+
+## Convergence Algorithm
+
+After each critique round (round 2+), convergence is checked by comparing each provider's current answer to their previous answer:
+
+1. Compute `difflib.SequenceMatcher(None, prev_content, curr_content).ratio()`
+2. **All** providers must exceed the threshold for convergence to trigger
+3. Default threshold: `0.85` (configurable via `--threshold`)
+
+This is character-level similarity, not semantic similarity.
+
+## Renderer and Writer
+
+**Renderer** (`display/renderer.py`) handles all terminal output via Rich: config tables, response panels, attribution/cost tables, progress spinners, and streaming output. It is stateful (tracks the current `Status` spinner).
+
+**OutputWriter** (`output/writer.py`) produces a timestamped directory of Markdown files:
+
+- `00-prompt.md` — original prompt and context
+- `01-round-N-responses.md` — responses per round
+- `02-round-N-critiques.md` — critiques per round
+- `convergence.md` — convergence reason
+- `resolution.md` — resolution analysis
+- `final-answer.md` — the synthesised answer
+- `attribution.md` — per-provider attribution metrics
+- `round-diffs.md` — round-over-round diff analysis
+- `costs.md` — token usage and cost breakdown
+
+Each file is written as its step completes, providing crash-resilient output.
