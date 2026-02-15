@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pydantic_settings import BaseSettings
 
-
 _DEFAULT_MODELS: dict[str, str] = {
     "openai": "gpt-4o",
     "anthropic": "claude-sonnet-4-20250514",

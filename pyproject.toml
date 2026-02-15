@@ -42,3 +42,26 @@ Repository = "https://github.com/jpollock/multi-agent-resolution-synthesis"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mars"]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.9.0",
+    "mypy>=1.14",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+mypy_path = "src"
+packages = ["mars"]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -30,7 +30,12 @@ class OllamaProvider:
         return self._last_usage
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
+        self,
+        messages: list[Message],
+        *,
+        model: str | None = None,
+        max_tokens: int = 8192,
+        temperature: float | None = None,
     ) -> tuple[str, TokenUsage]:
         options: dict = {"num_predict": max_tokens}
         if temperature is not None:
@@ -40,9 +45,7 @@ class OllamaProvider:
                 f"{self._base_url}/api/chat",
                 json={
                     "model": model or self.default_model,
-                    "messages": [
-                        {"role": m.role, "content": m.content} for m in messages
-                    ],
+                    "messages": [{"role": m.role, "content": m.content} for m in messages],
                     "stream": False,
                     "options": options,
                 },
@@ -57,35 +60,40 @@ class OllamaProvider:
             return data["message"]["content"], usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
+        self,
+        messages: list[Message],
+        *,
+        model: str | None = None,
+        max_tokens: int = 8192,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         options: dict = {"num_predict": max_tokens}
         if temperature is not None:
             options["temperature"] = temperature
         self._last_usage = TokenUsage()
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            async with client.stream(
+        async with (
+            httpx.AsyncClient(timeout=120.0) as client,
+            client.stream(
                 "POST",
                 f"{self._base_url}/api/chat",
                 json={
                     "model": model or self.default_model,
-                    "messages": [
-                        {"role": m.role, "content": m.content} for m in messages
-                    ],
+                    "messages": [{"role": m.role, "content": m.content} for m in messages],
                     "stream": True,
                     "options": options,
                 },
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line:
-                        continue
-                    data = json.loads(line)
-                    if data.get("done"):
-                        self._last_usage = TokenUsage(
-                            input_tokens=data.get("prompt_eval_count", 0) or 0,
-                            output_tokens=data.get("eval_count", 0) or 0,
-                        )
-                    content = data.get("message", {}).get("content", "")
-                    if content:
-                        yield content
+            ) as resp,
+        ):
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line:
+                    continue
+                data = json.loads(line)
+                if data.get("done"):
+                    self._last_usage = TokenUsage(
+                        input_tokens=data.get("prompt_eval_count", 0) or 0,
+                        output_tokens=data.get("eval_count", 0) or 0,
+                    )
+                content = data.get("message", {}).get("content", "")
+                if content:
+                    yield content

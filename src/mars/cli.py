@@ -42,7 +42,10 @@ def main() -> None:
     "-p",
     "--provider",
     multiple=True,
-    help=f"Provider or provider:model (e.g. openai:gpt-4.1). Available: {', '.join(AVAILABLE_PROVIDERS)}",
+    help=(
+        "Provider or provider:model (e.g. openai:gpt-4.1). "
+        f"Available: {', '.join(AVAILABLE_PROVIDERS)}"
+    ),
 )
 @click.option(
     "-m",
@@ -59,13 +62,19 @@ def main() -> None:
     multiple=True,
     help="Provider:model override (e.g. openai:gpt-4o-mini). Repeatable.",
 )
-@click.option("--threshold", type=float, default=0.85, help="Convergence similarity threshold (0.0-1.0).")
-@click.option("--max-tokens", type=int, default=8192, help="Max output tokens per LLM call.")
-@click.option("-t", "--temperature", type=float, default=None, help="Temperature (0.0-2.0). Default: provider default.")
-@click.option("-v", "--verbose", is_flag=True, help="Stream responses in real-time.")
 @click.option(
-    "-o", "--output-dir", default="./mars-output", help="Output directory."
+    "--threshold", type=float, default=0.85, help="Convergence similarity threshold (0.0-1.0)."
 )
+@click.option("--max-tokens", type=int, default=8192, help="Max output tokens per LLM call.")
+@click.option(
+    "-t",
+    "--temperature",
+    type=float,
+    default=None,
+    help="Temperature (0.0-2.0). Default: provider default.",
+)
+@click.option("-v", "--verbose", is_flag=True, help="Stream responses in real-time.")
+@click.option("-o", "--output-dir", default="./mars-output", help="Output directory.")
 def debate(
     prompt: str,
     context: tuple[str, ...],
@@ -112,9 +121,7 @@ def debate(
     # Explicit --model overrides take precedence
     for m in model:
         if ":" not in m:
-            raise click.BadParameter(
-                f"Invalid --model format '{m}'. Expected provider:model."
-            )
+            raise click.BadParameter(f"Invalid --model format '{m}'. Expected provider:model.")
         prov, mod = m.split(":", 1)
         model_overrides[prov] = mod
 

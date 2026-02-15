@@ -46,9 +46,7 @@ class RoundRobinStrategy(DebateStrategy):
                 for r in responses:
                     latest_answers[r.provider] = r
             else:
-                critiques, responses = await self._critique_round(
-                    round_num, latest_answers
-                )
+                critiques, responses = await self._critique_round(round_num, latest_answers)
                 debate_round.critiques = critiques
                 debate_round.responses = responses
                 self.writer.write_round(round_num, responses, critiques)
@@ -93,9 +91,7 @@ class RoundRobinStrategy(DebateStrategy):
         user_msg = Message(role="user", content=self._full_prompt_with_context())
         messages = [system_msg, user_msg] if system_msg else [user_msg]
 
-        return await self._gather_responses(
-            list(self.providers.items()), messages, phase="Round 1"
-        )
+        return await self._gather_responses(list(self.providers.items()), messages, phase="Round 1")
 
     async def _gather_responses(
         self,
@@ -128,11 +124,11 @@ class RoundRobinStrategy(DebateStrategy):
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
             self.renderer.stop_work()
-            for name, r in zip(provider_names, results):
+            for name, r in zip(provider_names, results, strict=True):
                 if isinstance(r, Exception):
                     self.renderer.show_error(name, str(r))
                     continue
-                responses.append(r)
+                responses.append(r)  # type: ignore[arg-type]
 
         return responses
 
@@ -179,7 +175,7 @@ class RoundRobinStrategy(DebateStrategy):
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
             self.renderer.stop_work()
-            for name, r in zip(provider_names, results):
+            for name, r in zip(provider_names, results, strict=True):  # type: ignore[assignment]
                 if isinstance(r, Exception):
                     self.renderer.show_error(name, str(r))
                     continue
@@ -269,20 +265,24 @@ class RoundRobinStrategy(DebateStrategy):
         if self.config.verbosity == Verbosity.VERBOSE:
             self.renderer.start_provider_stream(provider.name)
             content = ""
-            async for chunk in provider.stream(messages, model=model, max_tokens=max_tokens, temperature=temperature):
+            async for chunk in provider.stream(  # type: ignore[attr-defined]
+                messages, model=model, max_tokens=max_tokens, temperature=temperature
+            ):
                 self.renderer.stream_chunk(chunk)
                 content += chunk
             self.renderer.end_provider_stream()
             usage = provider.last_usage
         else:
             content, usage = await retry_with_backoff(
-                provider.generate, messages, model=model, max_tokens=max_tokens, temperature=temperature
+                provider.generate,
+                messages,
+                model=model,
+                max_tokens=max_tokens,
+                temperature=temperature,
             )
             self.renderer.show_response(provider.name, content)
 
-        return LLMResponse(
-            provider=provider.name, model=actual_model, content=content, usage=usage
-        )
+        return LLMResponse(provider=provider.name, model=actual_model, content=content, usage=usage)
 
     def _synthesis_provider_order(self) -> list[str]:
         """Return providers in preferred order for synthesis."""
@@ -299,9 +299,7 @@ class RoundRobinStrategy(DebateStrategy):
                 ordered.append(name)
         return ordered
 
-    async def _synthesize(
-        self, latest: dict[str, LLMResponse]
-    ) -> tuple[str, str]:
+    async def _synthesize(self, latest: dict[str, LLMResponse]) -> tuple[str, str]:
         parts = [self._full_prompt_with_context()]
         parts.append("\n---\n\nFinal answers from each model after debate:\n")
         for name, resp in latest.items():
@@ -365,21 +363,15 @@ class RoundRobinStrategy(DebateStrategy):
                 last_error = e
                 self.renderer.show_error(name, f"Synthesis failed: {e}")
 
-        raise RuntimeError(
-            f"All providers failed during synthesis. Last error: {last_error}"
-        )
+        raise RuntimeError(f"All providers failed during synthesis. Last error: {last_error}")
 
-    def _has_converged(
-        self, prev: dict[str, LLMResponse], curr: dict[str, LLMResponse]
-    ) -> bool:
+    def _has_converged(self, prev: dict[str, LLMResponse], curr: dict[str, LLMResponse]) -> bool:
         common = set(prev) & set(curr)
         if not common:
             return False
         threshold = self.config.convergence_threshold
         for name in common:
-            ratio = difflib.SequenceMatcher(
-                None, prev[name].content, curr[name].content
-            ).ratio()
+            ratio = difflib.SequenceMatcher(None, prev[name].content, curr[name].content).ratio()
             if ratio < threshold:
                 return False
         return True

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -83,14 +82,17 @@ class OutputWriter:
         for pa in report.providers:
             lines.append(
                 f"| {pa.provider} | {pa.model} "
-                f"| {pa.contribution_pct:.1f}% ({pa.contributed_sentences}/{pa.total_final_sentences}) "
-                f"| {pa.survival_rate:.1f}% ({pa.survived_sentences}/{pa.initial_sentences}) "
+                f"| {pa.contribution_pct:.1f}%"
+                f" ({pa.contributed_sentences}/{pa.total_final_sentences}) "
+                f"| {pa.survival_rate:.1f}%"
+                f" ({pa.survived_sentences}/{pa.initial_sentences}) "
                 f"| {pa.influence_score:.1f}% |"
             )
         if report.novel_sentences > 0:
             lines.append(
                 f"| *Synthesizer (novel)* | - "
-                f"| {report.novel_pct:.1f}% ({report.novel_sentences}/{report.sentence_count_final}) "
+                f"| {report.novel_pct:.1f}%"
+                f" ({report.novel_sentences}/{report.sentence_count_final}) "
                 f"| - | - |"
             )
         lines.append("\n## Metric Definitions\n")

@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class DebateMode(str, Enum):
+class DebateMode(StrEnum):
     ROUND_ROBIN = "round-robin"
     JUDGE = "judge"
 
 
-class Verbosity(str, Enum):
+class Verbosity(StrEnum):
     VERBOSE = "verbose"
     QUIET = "quiet"
 
