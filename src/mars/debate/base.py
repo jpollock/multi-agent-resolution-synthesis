@@ -6,6 +6,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+from mars.debate.prompts import SYSTEM_CONTEXT_TEMPLATE
 from mars.models import LLMResponse, Message, TokenUsage, Verbosity
 from mars.providers.base import retry_with_backoff
 
@@ -54,14 +55,7 @@ class DebateStrategy(ABC):
         ctx = "\n\n---\n\n".join(self.config.context)
         return Message(
             role="system",
-            content=(
-                "You are participating in a structured debate. The user's prompt "
-                "includes context that is essential to the task. Treat the context "
-                "as primary source material - reference it directly, address its "
-                "specifics, and ensure your answer covers every requirement stated "
-                "in both the context and prompt.\n\n"
-                f"CONTEXT:\n{ctx}"
-            ),
+            content=SYSTEM_CONTEXT_TEMPLATE.format(context=ctx),
         )
 
     async def _get_response(

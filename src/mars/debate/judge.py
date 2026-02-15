@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from mars.debate.base import DebateStrategy
+from mars.debate.prompts import EVALUATION_RULES, JUDGE_PREAMBLE
 from mars.models import (
     DebateResult,
     DebateRound,
@@ -83,31 +84,7 @@ class JudgeStrategy(DebateStrategy):
         parts.append("\n---\n\nResponses from each model:\n")
         for r in responses:
             parts.append(f"--- {r.provider} ({r.model}) ---\n{r.content}\n")
-        parts.append(
-            "\nYou are the judge. Re-read the original prompt and context above "
-            "carefully. Evaluate each response against EVERY specific requirement "
-            "in the original prompt.\n\n"
-            "CRITICAL RULES:\n"
-            "- Address EVERY numbered question or requirement in the original prompt.\n"
-            "- When the prompt asks for examples, provide CONCRETE examples with "
-            "real data, names, numbers, and specifics - not generic placeholders.\n"
-            "- When the prompt or context mentions specific data (names, numbers, "
-            "scores, versions), use that exact data in your answer.\n"
-            "- When the prompt asks for code, prompts, schemas, or configs, "
-            "provide complete, copy-pasteable output - not descriptions of what "
-            "it would look like.\n"
-            "- Prefer the most specific and detailed version of any point across "
-            "the models. Never abstract a concrete example into a vague summary.\n"
-            "- If models disagree, pick the version with the strongest reasoning "
-            "and most specificity.\n\n"
-            "Structure your response in two sections:\n\n"
-            "## Resolution Analysis\n"
-            "For each model, list which specific points you accepted and which "
-            "you rejected, with reasoning tied to the original requirements.\n\n"
-            "## Final Answer\n"
-            "Provide the complete synthesized answer. Match the level of detail "
-            "and specificity the original prompt demands."
-        )
+        parts.append(JUDGE_PREAMBLE + EVALUATION_RULES)
 
         system_msg = self._build_system()
         messages: list[Message] = []
