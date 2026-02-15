@@ -4,15 +4,22 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, AsyncIterator, Awaitable, Callable, Protocol, runtime_checkable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any, Protocol, runtime_checkable
 
 from mars.models import Message, TokenUsage
 
 logger = logging.getLogger(__name__)
 
 _RETRYABLE_NAMES = (
-    "timeout", "ratelimit", "rate_limit", "connection",
-    "internalserver", "server_error", "503", "529",
+    "timeout",
+    "ratelimit",
+    "rate_limit",
+    "connection",
+    "internalserver",
+    "server_error",
+    "503",
+    "529",
 )
 
 
@@ -43,10 +50,8 @@ async def retry_with_backoff(
             else:
                 raise
         if attempt < max_retries:
-            delay = base_delay * (2 ** attempt)
-            logger.warning(
-                "Retry %d/%d after %.1fs: %s", attempt + 1, max_retries, delay, last_exc
-            )
+            delay = base_delay * (2**attempt)
+            logger.warning("Retry %d/%d after %.1fs: %s", attempt + 1, max_retries, delay, last_exc)
             await asyncio.sleep(delay)
     raise last_exc  # type: ignore[misc]
 
@@ -63,9 +68,19 @@ class LLMProvider(Protocol):
     def last_usage(self) -> TokenUsage: ...
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
+        self,
+        messages: list[Message],
+        *,
+        model: str | None = None,
+        max_tokens: int = 8192,
+        temperature: float | None = None,
     ) -> tuple[str, TokenUsage]: ...
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
+        self,
+        messages: list[Message],
+        *,
+        model: str | None = None,
+        max_tokens: int = 8192,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]: ...

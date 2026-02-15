@@ -69,9 +69,7 @@ class Renderer:
             )
 
     def show_convergence(self, reason: str) -> None:
-        self.console.print(
-            Panel(reason, title="Convergence", border_style="yellow")
-        )
+        self.console.print(Panel(reason, title="Convergence", border_style="yellow"))
 
     def show_final_answer(self, result: DebateResult) -> None:
         self.console.print()
@@ -98,7 +96,10 @@ class Renderer:
             table.add_row(
                 pa.provider,
                 pa.model,
-                f"{pa.contribution_pct:.1f}% ({pa.contributed_sentences}/{pa.total_final_sentences})",
+                (
+                    f"{pa.contribution_pct:.1f}%"
+                    f" ({pa.contributed_sentences}/{pa.total_final_sentences})"
+                ),
                 f"{pa.survival_rate:.1f}% ({pa.survived_sentences}/{pa.initial_sentences})",
                 f"{pa.influence_score:.1f}%",
             )
@@ -107,7 +108,10 @@ class Renderer:
             table.add_row(
                 "[dim]Synthesizer (novel)[/dim]",
                 "[dim]-[/dim]",
-                f"[dim]{report.novel_pct:.1f}% ({report.novel_sentences}/{report.sentence_count_final})[/dim]",
+                (
+                    f"[dim]{report.novel_pct:.1f}%"
+                    f" ({report.novel_sentences}/{report.sentence_count_final})[/dim]"
+                ),
                 "[dim]-[/dim]",
                 "[dim]-[/dim]",
             )
@@ -173,6 +177,4 @@ class Renderer:
         self.console.print(f"\n[dim]Output written to: {path}[/dim]")
 
     def show_error(self, provider: str, error: str) -> None:
-        self.console.print(
-            f"[bold red]Error from {provider}:[/bold red] {error}"
-        )
+        self.console.print(f"[bold red]Error from {provider}:[/bold red] {error}")

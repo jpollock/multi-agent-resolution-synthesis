@@ -5,6 +5,7 @@ from __future__ import annotations
 from mars.analysis.attribution import AttributionAnalyzer
 from mars.analysis.costs import compute_costs
 from mars.config import AppConfig
+from mars.debate.base import DebateStrategy
 from mars.debate.judge import JudgeStrategy
 from mars.debate.round_robin import RoundRobinStrategy
 from mars.display.renderer import Renderer
@@ -33,6 +34,7 @@ class DebateEngine:
             self.config.mode.value,
         )
 
+        strategy: DebateStrategy
         if self.config.mode == DebateMode.JUDGE:
             strategy = JudgeStrategy(providers, self.config, renderer, writer)
         else:

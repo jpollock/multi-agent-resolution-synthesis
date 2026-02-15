@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import anthropic
 
@@ -13,9 +13,7 @@ from mars.models import Message, TokenUsage
 class AnthropicProvider:
     def __init__(self, config: AppConfig) -> None:
         self._config = config
-        self._client = anthropic.AsyncAnthropic(
-            api_key=config.get_api_key("anthropic")
-        )
+        self._client = anthropic.AsyncAnthropic(api_key=config.get_api_key("anthropic"))
         self._last_usage = TokenUsage()
 
     @property
@@ -30,9 +28,7 @@ class AnthropicProvider:
     def last_usage(self) -> TokenUsage:
         return self._last_usage
 
-    def _split_system(
-        self, messages: list[Message]
-    ) -> tuple[str, list[dict[str, str]]]:
+    def _split_system(self, messages: list[Message]) -> tuple[str, list[dict[str, str]]]:
         system = ""
         msgs: list[dict[str, str]] = []
         for m in messages:
@@ -43,7 +39,12 @@ class AnthropicProvider:
         return system, msgs
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
+        self,
+        messages: list[Message],
+        *,
+        model: str | None = None,
+        max_tokens: int = 8192,
+        temperature: float | None = None,
     ) -> tuple[str, TokenUsage]:
         system, msgs = self._split_system(messages)
         kwargs: dict = {}
@@ -53,7 +54,7 @@ class AnthropicProvider:
             model=model or self.default_model,
             max_tokens=max_tokens,
             system=system,
-            messages=msgs,
+            messages=msgs,  # type: ignore[arg-type]
             **kwargs,
         )
         usage = TokenUsage(
@@ -61,10 +62,15 @@ class AnthropicProvider:
             output_tokens=resp.usage.output_tokens,
         )
         self._last_usage = usage
-        return resp.content[0].text, usage
+        return resp.content[0].text, usage  # type: ignore[union-attr]
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
+        self,
+        messages: list[Message],
+        *,
+        model: str | None = None,
+        max_tokens: int = 8192,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         system, msgs = self._split_system(messages)
         self._last_usage = TokenUsage()
@@ -75,7 +81,7 @@ class AnthropicProvider:
             model=model or self.default_model,
             max_tokens=max_tokens,
             system=system,
-            messages=msgs,
+            messages=msgs,  # type: ignore[arg-type]
             **kwargs,
         ) as stream:
             async for text in stream.text_stream:

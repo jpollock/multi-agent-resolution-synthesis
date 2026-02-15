@@ -26,7 +26,5 @@ AVAILABLE_PROVIDERS = list(_PROVIDERS.keys())
 def get_provider(name: str, config: AppConfig) -> LLMProvider:
     cls = _PROVIDERS.get(name)
     if cls is None:
-        raise ValueError(
-            f"Unknown provider '{name}'. Available: {', '.join(AVAILABLE_PROVIDERS)}"
-        )
-    return cls(config)
+        raise ValueError(f"Unknown provider '{name}'. Available: {', '.join(AVAILABLE_PROVIDERS)}")
+    return cls(config)  # type: ignore[no-any-return]

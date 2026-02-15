@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from google import genai
 from google.genai.types import Content, GenerateContentConfig, Part
@@ -29,9 +29,7 @@ class GoogleProvider:
     def last_usage(self) -> TokenUsage:
         return self._last_usage
 
-    def _build_contents(
-        self, messages: list[Message]
-    ) -> tuple[str | None, list[Content]]:
+    def _build_contents(self, messages: list[Message]) -> tuple[str | None, list[Content]]:
         system: str | None = None
         contents: list[Content] = []
         for m in messages:
@@ -43,7 +41,12 @@ class GoogleProvider:
         return system, contents
 
     async def generate(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
+        self,
+        messages: list[Message],
+        *,
+        model: str | None = None,
+        max_tokens: int = 8192,
+        temperature: float | None = None,
     ) -> tuple[str, TokenUsage]:
         system, contents = self._build_contents(messages)
         cfg_kwargs: dict = {"max_output_tokens": max_tokens}
@@ -54,7 +57,7 @@ class GoogleProvider:
         config = GenerateContentConfig(**cfg_kwargs)
         resp = await self._client.aio.models.generate_content(
             model=model or self.default_model,
-            contents=contents,
+            contents=contents,  # type: ignore[arg-type]
             config=config,
         )
         usage = TokenUsage()
@@ -67,7 +70,12 @@ class GoogleProvider:
         return resp.text or "", usage
 
     async def stream(
-        self, messages: list[Message], *, model: str | None = None, max_tokens: int = 8192, temperature: float | None = None
+        self,
+        messages: list[Message],
+        *,
+        model: str | None = None,
+        max_tokens: int = 8192,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         system, contents = self._build_contents(messages)
         cfg_kwargs: dict = {"max_output_tokens": max_tokens}
@@ -79,7 +87,7 @@ class GoogleProvider:
         self._last_usage = TokenUsage()
         response = await self._client.aio.models.generate_content_stream(
             model=model or self.default_model,
-            contents=contents,
+            contents=contents,  # type: ignore[arg-type]
             config=config,
         )
         async for chunk in response:

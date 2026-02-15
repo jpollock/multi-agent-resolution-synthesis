@@ -52,12 +52,8 @@ class AttributionAnalyzer:
         attributions: list[ProviderAttribution] = []
 
         for name, data in provider_data.items():
-            contribution_pct, contributed = self._contribution(
-                final_sentences, data, provider_data
-            )
-            survival_rate, survived, initial_count = self._survival(
-                final_sentences, data
-            )
+            contribution_pct, contributed = self._contribution(final_sentences, data, provider_data)
+            survival_rate, survived, initial_count = self._survival(final_sentences, data)
             influence_score, influence_details = self._influence(
                 data, provider_data, list(provider_data.keys())
             )
@@ -73,9 +69,7 @@ class AttributionAnalyzer:
                     survived_sentences=survived,
                     initial_sentences=initial_count,
                     influence_score=round(influence_score, 1),
-                    influence_details={
-                        k: round(v, 1) for k, v in influence_details.items()
-                    },
+                    influence_details={k: round(v, 1) for k, v in influence_details.items()},
                 )
             )
 
@@ -94,18 +88,14 @@ class AttributionAnalyzer:
             round_diffs=round_diffs,
         )
 
-    def _extract_provider_data(
-        self, result: DebateResult
-    ) -> dict[str, _ProviderText]:
+    def _extract_provider_data(self, result: DebateResult) -> dict[str, _ProviderText]:
         data: dict[str, _ProviderText] = {}
         for rnd in result.rounds:
             for resp in rnd.responses:
                 if resp.provider not in data:
-                    data[resp.provider] = _ProviderText(
-                        provider=resp.provider, model=resp.model
-                    )
-                data[resp.provider].round_sentences[rnd.round_number] = (
-                    split_sentences(resp.content)
+                    data[resp.provider] = _ProviderText(provider=resp.provider, model=resp.model)
+                data[resp.provider].round_sentences[rnd.round_number] = split_sentences(
+                    resp.content
                 )
         return data
 
@@ -123,9 +113,7 @@ class AttributionAnalyzer:
             best_provider = None
             best_score = 0.0
             for name, pdata in all_providers.items():
-                all_sents = [
-                    s for sents in pdata.round_sentences.values() for s in sents
-                ]
+                all_sents = [s for sents in pdata.round_sentences.values() for s in sents]
                 _, score = _best_match(sent, all_sents)
                 if score > best_score:
                     best_score = score
@@ -202,9 +190,7 @@ class AttributionAnalyzer:
         overall = sum(per_target.values()) / len(per_target) if per_target else 0.0
         return overall, per_target
 
-    def _compute_round_diffs(
-        self, provider_data: dict[str, _ProviderText]
-    ) -> list[RoundDiff]:
+    def _compute_round_diffs(self, provider_data: dict[str, _ProviderText]) -> list[RoundDiff]:
         diffs: list[RoundDiff] = []
         for name, data in provider_data.items():
             rounds_sorted = sorted(data.round_sentences.keys())
@@ -224,17 +210,17 @@ class AttributionAnalyzer:
 
                 removed = len(s1) - unchanged
                 added = len(s2) - len(matched_s2)
-                similarity = difflib.SequenceMatcher(
-                    None, "\n".join(s1), "\n".join(s2)
-                ).ratio()
+                similarity = difflib.SequenceMatcher(None, "\n".join(s1), "\n".join(s2)).ratio()
 
-                diffs.append(RoundDiff(
-                    provider=name,
-                    from_round=r1,
-                    to_round=r2,
-                    similarity=round(similarity, 3),
-                    sentences_added=added,
-                    sentences_removed=removed,
-                    sentences_unchanged=unchanged,
-                ))
+                diffs.append(
+                    RoundDiff(
+                        provider=name,
+                        from_round=r1,
+                        to_round=r2,
+                        similarity=round(similarity, 3),
+                        sentences_added=added,
+                        sentences_removed=removed,
+                        sentences_unchanged=unchanged,
+                    )
+                )
         return diffs

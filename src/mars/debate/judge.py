@@ -105,11 +105,11 @@ class JudgeStrategy(DebateStrategy):
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
             self.renderer.stop_work()
-            for name, r in zip(provider_names, results):
+            for name, r in zip(provider_names, results, strict=True):
                 if isinstance(r, Exception):
                     self.renderer.show_error(name, str(r))
                     continue
-                responses.append(r)
+                responses.append(r)  # type: ignore[arg-type]
 
         return responses
 
@@ -197,17 +197,21 @@ class JudgeStrategy(DebateStrategy):
         if self.config.verbosity == Verbosity.VERBOSE:
             self.renderer.start_provider_stream(provider.name)
             content = ""
-            async for chunk in provider.stream(messages, model=model, max_tokens=max_tokens, temperature=temperature):
+            async for chunk in provider.stream(  # type: ignore[attr-defined]
+                messages, model=model, max_tokens=max_tokens, temperature=temperature
+            ):
                 self.renderer.stream_chunk(chunk)
                 content += chunk
             self.renderer.end_provider_stream()
             usage = provider.last_usage
         else:
             content, usage = await retry_with_backoff(
-                provider.generate, messages, model=model, max_tokens=max_tokens, temperature=temperature
+                provider.generate,
+                messages,
+                model=model,
+                max_tokens=max_tokens,
+                temperature=temperature,
             )
             self.renderer.show_response(provider.name, content)
 
-        return LLMResponse(
-            provider=provider.name, model=actual_model, content=content, usage=usage
-        )
+        return LLMResponse(provider=provider.name, model=actual_model, content=content, usage=usage)
