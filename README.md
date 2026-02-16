@@ -63,6 +63,20 @@ Run a multi-LLM debate on PROMPT. PROMPT can be plain text or `@file` to read fr
 | `-v, --verbose` | off | Stream responses in real-time |
 | `-o, --output-dir` | `./mars-output` | Output directory |
 
+### `mars configure`
+
+Set up MARS integration with [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Installs the `/mars:debate` slash command so you can run debates from any Claude Code session.
+
+```sh
+mars configure
+```
+
+Then in Claude Code:
+
+```
+/mars:debate Should we use Redis or Postgres for caching?
+```
+
 ### `mars providers`
 
 List configured providers with their default models and configuration status.
@@ -168,6 +182,24 @@ Three metrics per provider, computed via sentence-level similarity:
 ### Cost Tracking
 
 Token counts (input + output) and estimated USD cost per provider. Pricing uses prefix-matched model lookup (e.g., `claude-sonnet-4-20250514` matches `claude-sonnet-4` pricing). Ollama models show zero cost.
+
+## Claude Code Integration
+
+MARS can be used as a slash command inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+
+```sh
+# One-time setup after installing MARS
+mars configure
+```
+
+This installs `/mars:debate` into `~/.claude/commands/`, making it available in every Claude Code session. Usage:
+
+```
+/mars:debate What is the best approach to database sharding?
+/mars:debate Compare Kubernetes vs Docker Swarm for container orchestration
+```
+
+Claude Code will check your configured providers, run the debate with streaming output, and summarize the result.
 
 ## Configuration Tips
 
