@@ -8,7 +8,14 @@ from rich.panel import Panel
 from rich.status import Status
 from rich.table import Table
 
-from mars.models import AttributionReport, CostReport, DebateResult, RoundDiff, Verbosity
+from mars.models import (
+    AttributionReport,
+    CostReport,
+    DebateResult,
+    RoundDiff,
+    Verbosity,
+    provider_base_name,
+)
 
 
 class Renderer:
@@ -94,7 +101,7 @@ class Renderer:
 
         for pa in report.providers:
             table.add_row(
-                pa.provider,
+                provider_base_name(pa.provider),
                 pa.model,
                 (
                     f"{pa.contribution_pct:.1f}%"
@@ -135,7 +142,7 @@ class Renderer:
 
         for pc in report.providers:
             table.add_row(
-                pc.provider,
+                provider_base_name(pc.provider),
                 pc.model,
                 f"{pc.input_tokens:,}",
                 f"{pc.output_tokens:,}",
@@ -164,7 +171,7 @@ class Renderer:
 
         for d in diffs:
             table.add_row(
-                d.provider,
+                provider_base_name(d.provider),
                 f"{d.from_round} -> {d.to_round}",
                 f"{d.similarity:.1%}",
                 f"+{d.sentences_added}",

@@ -7,6 +7,15 @@ from enum import StrEnum
 from pydantic import BaseModel, Field, field_validator
 
 
+def provider_base_name(provider: str) -> str:
+    """Extract base provider name from a participant ID.
+
+    'vertex:claude-sonnet-4' -> 'vertex'
+    'openai' -> 'openai'
+    """
+    return provider.split(":")[0]
+
+
 class DebateMode(StrEnum):
     ROUND_ROBIN = "round-robin"
     JUDGE = "judge"

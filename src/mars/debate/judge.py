@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import click
+
 from mars.debate.base import DebateStrategy
 from mars.debate.prompts import EVALUATION_RULES, JUDGE_PREAMBLE
 from mars.models import (
@@ -11,6 +13,7 @@ from mars.models import (
     DebateRound,
     LLMResponse,
     Message,
+    provider_base_name,
 )
 
 if TYPE_CHECKING:
@@ -32,14 +35,24 @@ class JudgeStrategy(DebateStrategy):
             raise ValueError("Judge mode requires --judge-provider / -j")
 
         if judge_name not in self.providers:
-            raise ValueError(
-                f"Judge provider '{judge_name}' not in selected providers. "
-                f"Available: {', '.join(self.providers)}"
-            )
+            # Try matching by base name (e.g., -j vertex matches vertex:claude-...)
+            for pid in self.providers:
+                if provider_base_name(pid) == judge_name:
+                    judge_name = pid
+                    break
+            else:
+                raise ValueError(
+                    f"Judge provider '{judge_name}' not in selected providers. "
+                    f"Available: {', '.join(self.providers)}"
+                )
 
         # Step 1: All providers answer
         self.renderer.start_round(1)
         responses = await self._initial_round()
+        if not responses:
+            raise click.ClickException(
+                "All providers failed in round 1. Check model names and provider configuration."
+            )
         debate_round = DebateRound(round_number=1, responses=responses)
         result.rounds.append(debate_round)
         self.writer.write_round(1, responses)
@@ -50,7 +63,7 @@ class JudgeStrategy(DebateStrategy):
         judge_model = self.config.model_overrides.get(judge_name)
 
         self.renderer.start_work([judge_name], "Judging")
-        judgment = await self._judge(judge_provider, judge_model, responses)
+        judgment = await self._judge(judge_provider, judge_model, responses, judge_name)
         self.renderer.stop_work()
 
         final, resolution = self._parse_final_answer(judgment.content)
@@ -79,6 +92,7 @@ class JudgeStrategy(DebateStrategy):
         judge: LLMProvider,
         model: str | None,
         responses: list[LLMResponse],
+        participant_id: str | None = None,
     ) -> LLMResponse:
         parts = [self._full_prompt_with_context()]
         parts.append("\n---\n\nResponses from each model:\n")
@@ -92,4 +106,4 @@ class JudgeStrategy(DebateStrategy):
             messages.append(system_msg)
         messages.append(Message(role="user", content="\n".join(parts)))
 
-        return await self._get_response(judge, messages, model)
+        return await self._get_response(judge, messages, model, participant_id=participant_id)

@@ -5,7 +5,9 @@ from __future__ import annotations
 import difflib
 from typing import TYPE_CHECKING
 
-from mars.debate.base import DebateStrategy
+import click
+
+from mars.debate.base import DebateStrategy, _format_provider_error
 from mars.debate.prompts import CRITIQUE_INSTRUCTIONS, EVALUATION_RULES, SYNTHESIS_PREAMBLE
 from mars.models import (
     Critique,
@@ -13,6 +15,7 @@ from mars.models import (
     DebateRound,
     LLMResponse,
     Message,
+    provider_base_name,
 )
 
 if TYPE_CHECKING:
@@ -37,6 +40,10 @@ class RoundRobinStrategy(DebateStrategy):
 
             if round_num == 1:
                 responses = await self._initial_round()
+                if not responses:
+                    raise click.ClickException(
+                        "All providers failed in round 1. Check model names and provider configuration."
+                    )
                 debate_round.responses = responses
                 self.writer.write_round(round_num, responses)
                 for r in responses:
@@ -108,7 +115,7 @@ class RoundRobinStrategy(DebateStrategy):
             for name, provider, msgs in critique_items:
                 model = self.config.model_overrides.get(name)
                 try:
-                    r = await self._get_response(provider, msgs, model)
+                    r = await self._get_response(provider, msgs, model, participant_id=name)
                     for other_name in latest:
                         if other_name != name:
                             critiques.append(
@@ -120,7 +127,7 @@ class RoundRobinStrategy(DebateStrategy):
                             )
                     responses.append(r)
                 except Exception as e:
-                    self.renderer.show_error(name, str(e))
+                    self.renderer.show_error(name, _format_provider_error(e))
         else:
             critique_names = [name for name, _, _ in critique_items]
             self.renderer.start_work(critique_names, f"Round {round_num} critiques")
@@ -131,13 +138,13 @@ class RoundRobinStrategy(DebateStrategy):
             for name, provider, msgs in critique_items:
                 provider_names.append(name)
                 model = self.config.model_overrides.get(name)
-                tasks.append(self._get_response(provider, msgs, model))
+                tasks.append(self._get_response(provider, msgs, model, participant_id=name))
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
             self.renderer.stop_work()
             for name, r in zip(provider_names, results, strict=True):  # type: ignore[assignment]
                 if isinstance(r, Exception):
-                    self.renderer.show_error(name, str(r))
+                    self.renderer.show_error(name, _format_provider_error(r))
                     continue
                 for other_name in latest:
                     if other_name != name:
@@ -179,9 +186,16 @@ class RoundRobinStrategy(DebateStrategy):
             return [synth_name] + [n for n in self.providers if n != synth_name]
 
         ordered: list[str] = []
-        for preferred in ("anthropic", "openai"):
-            if preferred in self.providers:
-                ordered.append(preferred)
+        for preferred in ("anthropic", "vertex", "openai"):
+            for name in self.providers:
+                base = provider_base_name(name)
+                model = self.config.model_overrides.get(name, "")
+                if base == preferred and name not in ordered:
+                    # For vertex, prefer Claude models for synthesis
+                    if base == "vertex" and model.startswith("gemini"):
+                        continue
+                    ordered.append(name)
+                    break
         for name in self.providers:
             if name not in ordered:
                 ordered.append(name)
@@ -209,7 +223,7 @@ class RoundRobinStrategy(DebateStrategy):
             try:
                 self.renderer.start_round(0)
                 self.renderer.start_work([name], "Synthesizing")
-                resp = await self._get_response(provider, messages, model)
+                resp = await self._get_response(provider, messages, model, participant_id=name)
                 self.renderer.stop_work()
 
                 final, resolution = self._parse_final_answer(resp.content)
@@ -217,9 +231,9 @@ class RoundRobinStrategy(DebateStrategy):
             except Exception as e:
                 self.renderer.stop_work()
                 last_error = e
-                self.renderer.show_error(name, f"Synthesis failed: {e}")
+                self.renderer.show_error(name, f"Synthesis failed: {_format_provider_error(e)}")
 
-        raise RuntimeError(f"All providers failed during synthesis. Last error: {last_error}")
+        raise click.ClickException(f"All providers failed during synthesis. Last error: {last_error}")
 
     def _has_converged(self, prev: dict[str, LLMResponse], curr: dict[str, LLMResponse]) -> bool:
         common = set(prev) & set(curr)

@@ -9,7 +9,7 @@ from mars.debate.base import DebateStrategy
 from mars.debate.judge import JudgeStrategy
 from mars.debate.round_robin import RoundRobinStrategy
 from mars.display.renderer import Renderer
-from mars.models import DebateConfig, DebateMode, DebateResult
+from mars.models import DebateConfig, DebateMode, DebateResult, provider_base_name
 from mars.output.writer import OutputWriter
 from mars.providers.registry import get_provider
 
@@ -20,10 +20,12 @@ class DebateEngine:
         self.app_config = app_config
 
     async def run(self) -> DebateResult:
-        # Build providers
+        # Build providers — participant_id is the full string (e.g. "vertex:claude-...")
         providers = {}
-        for name in self.config.providers:
-            providers[name] = get_provider(name, self.app_config)
+        for participant_id in self.config.providers:
+            base_name = provider_base_name(participant_id)
+            model = self.config.model_overrides.get(participant_id)
+            providers[participant_id] = get_provider(base_name, self.app_config, model=model)
 
         renderer = Renderer(self.config.verbosity)
         writer = OutputWriter(self.config.output_dir, self.config.prompt)

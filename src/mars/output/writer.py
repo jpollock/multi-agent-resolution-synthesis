@@ -7,7 +7,14 @@ from pathlib import Path
 
 from slugify import slugify
 
-from mars.models import AttributionReport, CostReport, Critique, LLMResponse, RoundDiff
+from mars.models import (
+    AttributionReport,
+    CostReport,
+    Critique,
+    LLMResponse,
+    RoundDiff,
+    provider_base_name,
+)
 
 
 class OutputWriter:
@@ -46,7 +53,7 @@ class OutputWriter:
             parts.append(f"# Round {round_num} - Initial Responses\n")
 
         for r in responses:
-            parts.append(f"\n## {r.provider} ({r.model})\n\n{r.content}\n")
+            parts.append(f"\n## {provider_base_name(r.provider)} ({r.model})\n\n{r.content}\n")
 
         idx = str(round_num).zfill(2)
         label = "critiques" if critiques else "responses"
@@ -81,7 +88,7 @@ class OutputWriter:
         lines.append("|----------|-------|-------------|----------|-----------|")
         for pa in report.providers:
             lines.append(
-                f"| {pa.provider} | {pa.model} "
+                f"| {provider_base_name(pa.provider)} | {pa.model} "
                 f"| {pa.contribution_pct:.1f}%"
                 f" ({pa.contributed_sentences}/{pa.total_final_sentences}) "
                 f"| {pa.survival_rate:.1f}%"
@@ -110,9 +117,9 @@ class OutputWriter:
         )
         for pa in report.providers:
             if pa.influence_details:
-                lines.append(f"\n### {pa.provider} Influence Breakdown\n")
+                lines.append(f"\n### {provider_base_name(pa.provider)} Influence Breakdown\n")
                 for target, rate in pa.influence_details.items():
-                    lines.append(f"- Adopted by **{target}**: {rate:.1f}%")
+                    lines.append(f"- Adopted by **{provider_base_name(target)}**: {rate:.1f}%")
         self._write(self._audit / "attribution.md", "\n".join(lines))
 
     def write_costs(self, report: CostReport) -> None:
@@ -121,7 +128,7 @@ class OutputWriter:
         lines.append("|----------|-------|-------------|--------------|------|-------|")
         for pc in report.providers:
             lines.append(
-                f"| {pc.provider} | {pc.model} "
+                f"| {provider_base_name(pc.provider)} | {pc.model} "
                 f"| {pc.input_tokens:,} | {pc.output_tokens:,} "
                 f"| ${pc.total_cost:.4f} | {pc.share_of_total:.1f}% |"
             )
@@ -139,7 +146,7 @@ class OutputWriter:
         lines.append("|----------|--------|-----------|-------|---------|-----------|")
         for d in diffs:
             lines.append(
-                f"| {d.provider} | {d.from_round}->{d.to_round} "
+                f"| {provider_base_name(d.provider)} | {d.from_round}->{d.to_round} "
                 f"| {d.similarity:.1%} | +{d.sentences_added} "
                 f"| -{d.sentences_removed} | {d.sentences_unchanged} |"
             )

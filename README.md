@@ -7,37 +7,35 @@ Multiple LLMs debate your question through structured rounds of argumentation, c
 Requires Python 3.11+.
 
 ```sh
-git clone https://github.com/jpollock/multi-agent-resolution-synthesis.git
-cd multi-agent-resolution-synthesis
-pip install -e .
-```
-
-Copy `.env.example` to `.env` and add your API keys:
-
-```sh
-cp .env.example .env
-```
-
-```
-MARS_OPENAI_API_KEY=sk-...
-MARS_ANTHROPIC_API_KEY=sk-ant-...
-MARS_GOOGLE_API_KEY=AIza...
-MARS_OLLAMA_BASE_URL=http://localhost:11434
+pip install mars-llm
 ```
 
 ## Quick Start
 
+1. Configure your API keys (one-time setup):
+
 ```sh
-# Two providers debate (default: openai + anthropic)
+mars configure
+```
+
+This walks you through setting up API keys for each provider interactively.
+You need at least two providers configured to run a debate.
+
+2. Run a debate:
+
+```sh
 mars debate "What is the best sorting algorithm for nearly-sorted data?"
+```
 
-# Pick specific providers
-mars debate "Explain CAP theorem" -p openai -p google
+3. View the results:
 
-# Include context from files
-mars debate @prompt.md -c @context.txt
+```sh
+mars show
+```
 
-# Check which providers are configured
+4. Check provider status anytime:
+
+```sh
 mars providers
 ```
 
@@ -65,32 +63,126 @@ Run a multi-LLM debate on PROMPT. PROMPT can be plain text or `@file` to read fr
 
 ### `mars configure`
 
-Set up MARS integration with [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Installs the `/mars:debate` slash command so you can run debates from any Claude Code session.
-
-```sh
-mars configure
-```
-
-Then in Claude Code:
-
-```
-/mars:debate Should we use Redis or Postgres for caching?
-```
+Interactive setup for API keys and integrations. Prompts for each provider's
+API key, validates it, and stores keys in `~/.mars/config`. Optionally sets
+up [Claude Code](https://docs.anthropic.com/en/docs/claude-code) integration.
 
 ### `mars providers`
 
 List configured providers with their default models and configuration status.
 
-## Providers
+### `mars show [SUBCOMMAND]`
 
-| Provider | Env Var | Default Model |
-|----------|---------|---------------|
+View results of a completed debate. With no subcommand, shows a compact summary.
+
+| Subcommand | Description |
+|------------|-------------|
+| *(none)* | Compact summary: prompt, providers, cost, attribution, answer |
+| `answer` | Final synthesized answer only |
+| `costs` | Token usage and cost breakdown |
+| `attribution` | Per-provider contribution and influence metrics |
+| `rounds` | Round-by-round responses and diffs |
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--debate` | *(most recent)* | Path to a specific debate directory |
+| `-o, --output-dir` | `./mars-output` | Output directory |
+
+### `mars history`
+
+List past debates with timestamps, providers, rounds, and costs.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-n, --limit` | *(all)* | Show only the last N debates |
+| `-o, --output-dir` | `./mars-output` | Output directory |
+
+### `mars copy`
+
+Copy the final answer to the system clipboard.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--full` | off | Include prompt, answer, and attribution |
+| `--debate` | *(most recent)* | Path to a specific debate directory |
+| `-o, --output-dir` | `./mars-output` | Output directory |
+
+## Configuration
+
+MARS looks for API keys in three places (highest priority wins):
+
+| Source | Example | Priority |
+|--------|---------|----------|
+| Environment variables | `export MARS_OPENAI_API_KEY=sk-...` | Highest |
+| Local `.env` file | `MARS_OPENAI_API_KEY=sk-...` in `.env` | Medium |
+| Global config | `~/.mars/config` (set by `mars configure`) | Lowest |
+
+This means you can set keys globally with `mars configure` and override
+them per-project with a local `.env` file if needed.
+
+### Providers
+
+| Provider | Config Variable | Default Model |
+|----------|----------------|---------------|
 | `openai` | `MARS_OPENAI_API_KEY` | `gpt-4o` |
 | `anthropic` | `MARS_ANTHROPIC_API_KEY` | `claude-sonnet-4-20250514` |
 | `google` | `MARS_GOOGLE_API_KEY` | `gemini-2.0-flash` |
+| `vertex` | `MARS_VERTEX_PROJECT_ID` | `claude-opus-4-6` |
 | `ollama` | `MARS_OLLAMA_BASE_URL` | `llama3.2` |
 
 Override models per-run with `-p provider:model` or `--model provider:model`.
+
+### Vertex AI (Google Cloud)
+
+Vertex AI acts as a gateway to both Claude and Gemini models through a single
+authentication mechanism (Application Default Credentials).
+
+Setup:
+
+```sh
+gcloud auth application-default login
+mars configure   # enter your GCP project ID and region
+```
+
+Use `-p vertex:model` to specify models. The same `vertex` provider routes
+to Claude or Gemini based on the model name:
+
+```sh
+# Claude via Vertex
+mars debate "Question" -p vertex:claude-sonnet-4 -p openai
+
+# Gemini via Vertex
+mars debate "Question" -p vertex:gemini-2.5-flash -p openai
+
+# Both Claude and Gemini via Vertex
+mars debate "Question" \
+  -p vertex:claude-sonnet-4 \
+  -p vertex:gemini-2.5-flash
+```
+
+Vertex AI config variables:
+
+| Variable | Description |
+|----------|-------------|
+| `MARS_VERTEX_PROJECT_ID` | GCP project ID |
+| `MARS_VERTEX_REGION` | GCP region (default: `us-central1`) |
+
+Auto-detected from `ANTHROPIC_VERTEX_PROJECT_ID`, `GOOGLE_CLOUD_PROJECT`,
+and `CLOUD_ML_REGION` if set.
+
+### Default Providers
+
+Set default providers so you don't need `-p` every time:
+
+```sh
+mars configure   # prompted at the end for default providers
+```
+
+Or set `MARS_DEFAULT_PROVIDERS` directly:
+
+```sh
+export MARS_DEFAULT_PROVIDERS="vertex:claude-opus-4-6,vertex:gemini-2.5-flash"
+```
 
 ## Debate Modes
 
@@ -130,12 +222,32 @@ Using context files:
 mars debate @question.md -c @codebase-summary.txt -c @requirements.txt
 ```
 
+Vertex AI — Claude vs Gemini:
+
+```sh
+mars debate "Best practices for API versioning" \
+  -p vertex:claude-sonnet-4 \
+  -p vertex:gemini-2.5-flash -v
+```
+
 Tuning convergence and temperature:
 
 ```sh
 mars debate "Optimal database indexing strategy" \
   -p openai -p anthropic \
   --threshold 0.70 -t 0.3 -r 5
+```
+
+Reviewing results after a debate:
+
+```sh
+mars show                    # summary of most recent debate
+mars show answer             # just the final answer
+mars show costs              # cost breakdown
+mars history                 # list all past debates
+mars history -n 5            # last 5 debates
+mars copy                    # copy final answer to clipboard
+mars copy --full             # copy prompt + answer + attribution
 ```
 
 ## Output Structure
@@ -185,14 +297,9 @@ Token counts (input + output) and estimated USD cost per provider. Pricing uses 
 
 ## Claude Code Integration
 
-MARS can be used as a slash command inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
-
-```sh
-# One-time setup after installing MARS
-mars configure
-```
-
-This installs `/mars:debate` into `~/.claude/commands/`, making it available in every Claude Code session. Usage:
+`mars configure` detects [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+and offers to install `/mars:debate` as a slash command. Once installed, you
+can run debates from any Claude Code session:
 
 ```
 /mars:debate What is the best approach to database sharding?

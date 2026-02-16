@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
@@ -17,6 +18,60 @@ if TYPE_CHECKING:
     from mars.providers.base import LLMProvider
 
 FINAL_ANSWER_HEADING = "## Final Answer"
+
+
+def _format_provider_error(error: Exception) -> str:
+    """Turn raw SDK exceptions into concise, actionable messages."""
+    msg = str(error)
+    msg_lower = msg.lower()
+
+    # 404 / model not found
+    if "404" in msg or "not_found" in msg_lower or "does not exist" in msg_lower:
+        # Try to extract model name from various SDK formats
+        # OpenAI: "The model `gpt-oss-120b` does not exist"
+        # Anthropic: "model: claude-4-6-opus@20260215"
+        # Google/Vertex: "models/gemini-3-pro` was not found"
+        model_name = None
+        for pattern in [
+            r"The model `([^`]+)`",
+            r"model:\s*(\S+)",
+            r"models/([^\s`'\"]+)",
+        ]:
+            m = re.search(pattern, msg)
+            if m:
+                model_name = m.group(1).rstrip("`")
+                break
+        if model_name:
+            return f"Model '{model_name}' not found. Check the model name with your provider."
+        return "Model not found. Check the model name with your provider."
+
+    # 401 / authentication
+    if "401" in msg or "unauthorized" in msg_lower or "invalid.*api.?key" in msg_lower:
+        return "Authentication failed. Run 'mars configure' to check your API key."
+
+    # 403 / permission denied
+    if "403" in msg or "forbidden" in msg_lower or "permission" in msg_lower:
+        return "Permission denied. Check your API key permissions or account access."
+
+    # Quota / billing
+    if "quota" in msg_lower or "billing" in msg_lower or "insufficient" in msg_lower:
+        return "Quota exceeded or billing issue. Check your account at your provider's console."
+
+    # Connection errors
+    if "connection" in msg_lower or "connect" in msg_lower and "refused" in msg_lower:
+        return "Connection failed. Check that the service is reachable."
+
+    # Fall back: strip JSON noise, keep first meaningful line
+    # Many SDK errors start with a status line then dump JSON
+    lines = msg.strip().split("\n")
+    first = lines[0].strip()
+    # Remove trailing JSON blob from single-line errors
+    json_start = first.find("{'")
+    if json_start > 20:
+        first = first[:json_start].strip().rstrip(".-")
+    if len(first) > 200:
+        first = first[:200] + "..."
+    return first
 
 
 class DebateStrategy(ABC):
@@ -59,16 +114,22 @@ class DebateStrategy(ABC):
         )
 
     async def _get_response(
-        self, provider: LLMProvider, messages: list[Message], model: str | None
+        self,
+        provider: LLMProvider,
+        messages: list[Message],
+        model: str | None,
+        *,
+        participant_id: str | None = None,
     ) -> LLMResponse:
         """Get a response from a provider with verbose/quiet handling."""
+        display_name = participant_id or provider.name
         actual_model = model or provider.default_model
         usage = TokenUsage()
         max_tokens = self.config.max_tokens
         temperature = self.config.temperature
 
         if self.config.verbosity == Verbosity.VERBOSE:
-            self.renderer.start_provider_stream(provider.name)
+            self.renderer.start_provider_stream(display_name)
             content = ""
             async for chunk in provider.stream(  # type: ignore[attr-defined]
                 messages,
@@ -88,10 +149,10 @@ class DebateStrategy(ABC):
                 max_tokens=max_tokens,
                 temperature=temperature,
             )
-            self.renderer.show_response(provider.name, content)
+            self.renderer.show_response(display_name, content)
 
         return LLMResponse(
-            provider=provider.name,
+            provider=display_name,
             model=actual_model,
             content=content,
             usage=usage,
@@ -110,10 +171,10 @@ class DebateStrategy(ABC):
             for name, provider in providers:
                 model = self.config.model_overrides.get(name)
                 try:
-                    resp = await self._get_response(provider, messages, model)
+                    resp = await self._get_response(provider, messages, model, participant_id=name)
                     responses.append(resp)
                 except Exception as e:
-                    self.renderer.show_error(name, str(e))
+                    self.renderer.show_error(name, _format_provider_error(e))
         else:
             names = [n for n, _ in providers]
             self.renderer.start_work(names, phase)
@@ -122,13 +183,13 @@ class DebateStrategy(ABC):
             for name, provider in providers:
                 provider_names.append(name)
                 model = self.config.model_overrides.get(name)
-                tasks.append(self._get_response(provider, messages, model))
+                tasks.append(self._get_response(provider, messages, model, participant_id=name))
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
             self.renderer.stop_work()
             for name, r in zip(provider_names, results, strict=True):
                 if isinstance(r, Exception):
-                    self.renderer.show_error(name, str(r))
+                    self.renderer.show_error(name, _format_provider_error(r))
                     continue
                 responses.append(r)  # type: ignore[arg-type]
 
