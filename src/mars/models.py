@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
+from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -16,12 +16,12 @@ def provider_base_name(provider: str) -> str:
     return provider.split(":")[0]
 
 
-class DebateMode(StrEnum):
+class DebateMode(str, Enum):
     ROUND_ROBIN = "round-robin"
     JUDGE = "judge"
 
 
-class Verbosity(StrEnum):
+class Verbosity(str, Enum):
     VERBOSE = "verbose"
     QUIET = "quiet"
 

@@ -4,7 +4,7 @@ Multiple LLMs debate your question through structured rounds of argumentation, c
 
 ## Installation
 
-Requires Python 3.11+.
+Requires Python 3.10+.
 
 ```sh
 pip install mars-llm
