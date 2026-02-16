@@ -42,7 +42,8 @@ class RoundRobinStrategy(DebateStrategy):
                 responses = await self._initial_round()
                 if not responses:
                     raise click.ClickException(
-                        "All providers failed in round 1. Check model names and provider configuration."
+                        "All providers failed in round 1. "
+                        "Check model names and provider configuration."
                     )
                 debate_round.responses = responses
                 self.writer.write_round(round_num, responses)
@@ -233,7 +234,9 @@ class RoundRobinStrategy(DebateStrategy):
                 last_error = e
                 self.renderer.show_error(name, f"Synthesis failed: {_format_provider_error(e)}")
 
-        raise click.ClickException(f"All providers failed during synthesis. Last error: {last_error}")
+        raise click.ClickException(
+            f"All providers failed during synthesis. Last error: {last_error}"
+        )
 
     def _has_converged(self, prev: dict[str, LLMResponse], curr: dict[str, LLMResponse]) -> bool:
         common = set(prev) & set(curr)

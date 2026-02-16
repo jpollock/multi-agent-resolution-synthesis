@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
+import re
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any, Protocol, runtime_checkable
 
@@ -30,6 +32,17 @@ def _is_retryable(exc: Exception) -> bool:
     return any(r in name or r in msg for r in _RETRYABLE_NAMES)
 
 
+def _sanitize_log_message(exc: Exception) -> str:
+    """Sanitize exception text for logging (strip API keys/tokens)."""
+    text = str(exc)
+    text = re.sub(r"(sk-[A-Za-z0-9_-]{8})[A-Za-z0-9_-]+", r"\1...", text)
+    text = re.sub(r"(key-[A-Za-z0-9]{8})[A-Za-z0-9]+", r"\1...", text)
+    text = re.sub(r"(AIza[A-Za-z0-9_-]{8})[A-Za-z0-9_-]+", r"\1...", text)
+    text = re.sub(r"(ya29\.)[A-Za-z0-9_.-]+", r"\1...", text)
+    text = re.sub(r"(Bearer\s+)[A-Za-z0-9_./+-]+", r"\1[REDACTED]", text)
+    return text
+
+
 async def retry_with_backoff(
     fn: Callable[..., Awaitable[Any]],
     *args: Any,
@@ -50,8 +63,11 @@ async def retry_with_backoff(
             else:
                 raise
         if attempt < max_retries:
-            delay = base_delay * (2**attempt)
-            logger.warning("Retry %d/%d after %.1fs: %s", attempt + 1, max_retries, delay, last_exc)
+            delay = base_delay * (2**attempt) + random.uniform(0, base_delay)
+            logger.warning(
+                "Retry %d/%d after %.1fs: %s",
+                attempt + 1, max_retries, delay, _sanitize_log_message(last_exc),
+            )
             await asyncio.sleep(delay)
     raise last_exc  # type: ignore[misc]
 

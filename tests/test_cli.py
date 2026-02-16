@@ -8,18 +8,17 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
-from mars.cli import main
-from mars.output.reader import (
-    find_debates,
-    extract_prompt_from_dirname,
-    extract_timestamp,
-    parse_costs_total,
-    parse_providers,
-    count_rounds,
-)
-
 import mars.cli
 import mars.config
+from mars.cli import main
+from mars.output.reader import (
+    count_rounds,
+    extract_prompt_from_dirname,
+    extract_timestamp,
+    find_debates,
+    parse_costs_total,
+    parse_providers,
+)
 
 runner = CliRunner()
 
@@ -35,7 +34,8 @@ def isolated_home(tmp_path, monkeypatch):
     monkeypatch.setattr(mars.cli, "MARS_CONFIG_FILE", config_file)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     # Mock validators to avoid real API calls
-    noop = lambda v: (True, "")
+    def noop(v):
+        return (True, "")
     monkeypatch.setitem(mars.cli._VALIDATORS, "openai", noop)
     monkeypatch.setitem(mars.cli._VALIDATORS, "anthropic", noop)
     monkeypatch.setitem(mars.cli._VALIDATORS, "google", noop)
@@ -405,7 +405,7 @@ class TestHistory:
         # Row 1 should be the most recent
         lines = result.output.splitlines()
         # Find the data rows (contain topic names)
-        data_lines = [l for l in lines if "topic" in l]
+        data_lines = [line for line in lines if "topic" in line]
         assert "third" in data_lines[0]
         assert "first" in data_lines[-1]
 
@@ -433,7 +433,7 @@ class TestCopy:
 
     def test_full_includes_prompt_and_attribution(self, fake_debate):
         output_dir = str(fake_debate / "mars-output")
-        with patch("mars.cli._copy_to_clipboard", return_value=False) as mock_copy:
+        with patch("mars.cli._copy_to_clipboard", return_value=False):
             result = runner.invoke(main, ["copy", "--full", "-o", output_dir])
         assert result.exit_code == 0
         assert "Prompt" in result.output

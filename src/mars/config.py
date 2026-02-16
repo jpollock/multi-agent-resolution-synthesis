@@ -11,6 +11,25 @@ MARS_CONFIG_DIR = Path.home() / ".mars"
 MARS_CONFIG_FILE = MARS_CONFIG_DIR / "config"
 
 
+def _check_config_permissions() -> None:
+    """Warn if ~/.mars/config is readable by group or others."""
+    import logging
+    import os
+    import stat
+
+    if not MARS_CONFIG_FILE.is_file():
+        return
+    mode = os.stat(MARS_CONFIG_FILE).st_mode
+    if mode & (stat.S_IRGRP | stat.S_IROTH):
+        logging.getLogger(__name__).warning(
+            "%s is readable by other users (mode %o). "
+            "Run: chmod 600 %s",
+            MARS_CONFIG_FILE,
+            stat.S_IMODE(mode),
+            MARS_CONFIG_FILE,
+        )
+
+
 def load_mars_config() -> None:
     """Load MARS configuration from all sources.
 
@@ -21,6 +40,7 @@ def load_mars_config() -> None:
     """
     load_dotenv(override=False)
     if MARS_CONFIG_FILE.is_file():
+        _check_config_permissions()
         load_dotenv(MARS_CONFIG_FILE, override=False)
 
 _DEFAULT_MODELS: dict[str, str] = {

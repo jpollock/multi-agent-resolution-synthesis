@@ -20,9 +20,20 @@ if TYPE_CHECKING:
 FINAL_ANSWER_HEADING = "## Final Answer"
 
 
+def _sanitize_secrets(text: str) -> str:
+    """Strip API keys and tokens from error text."""
+    # Common key patterns: sk-..., key-..., AIza..., ya29..., Bearer tokens
+    text = re.sub(r"(sk-[A-Za-z0-9_-]{8})[A-Za-z0-9_-]+", r"\1...", text)
+    text = re.sub(r"(key-[A-Za-z0-9]{8})[A-Za-z0-9]+", r"\1...", text)
+    text = re.sub(r"(AIza[A-Za-z0-9_-]{8})[A-Za-z0-9_-]+", r"\1...", text)
+    text = re.sub(r"(ya29\.)[A-Za-z0-9_.-]+", r"\1...", text)
+    text = re.sub(r"(Bearer\s+)[A-Za-z0-9_./+-]+", r"\1[REDACTED]", text)
+    return text
+
+
 def _format_provider_error(error: Exception) -> str:
     """Turn raw SDK exceptions into concise, actionable messages."""
-    msg = str(error)
+    msg = _sanitize_secrets(str(error))
     msg_lower = msg.lower()
 
     # 404 / model not found
@@ -58,7 +69,7 @@ def _format_provider_error(error: Exception) -> str:
         return "Quota exceeded or billing issue. Check your account at your provider's console."
 
     # Connection errors
-    if "connection" in msg_lower or "connect" in msg_lower and "refused" in msg_lower:
+    if "connection" in msg_lower or ("connect" in msg_lower and "refused" in msg_lower):
         return "Connection failed. Check that the service is reachable."
 
     # Fall back: strip JSON noise, keep first meaningful line
