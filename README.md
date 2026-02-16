@@ -1,6 +1,16 @@
 # MARS — Multi-Agent Resolution Synthesis
 
-Multiple LLMs debate your question through structured rounds of argumentation, critique, and synthesis to produce a single, well-reasoned answer.
+When the answer matters, don't ask one model — make them debate.
+
+MARS is a CLI tool that runs your question through multiple LLMs (OpenAI, Anthropic, Google, Vertex AI), has them critique each other's reasoning, and synthesizes a single answer. You get attribution (which model contributed what), cost tracking, and convergence detection that stops the debate when models agree.
+
+No frameworks. No agents. Just structured argumentation between models you already have access to.
+
+### Why this approach
+
+This is a hypothesis, not a guarantee. The idea is simple: a portfolio of perspectives tends to outperform any single one. I saw this firsthand building ecommerce recommendation systems — a portfolio of algorithms consistently outperformed any individual algorithm, even the "best" one. MARS applies the same intuition to LLMs.
+
+There's [related research](https://composable-models.github.io/llm_debate/) suggesting multi-agent debate improves factual accuracy, but we're not claiming proof. We're claiming it's worth trying.
 
 ## Installation
 
